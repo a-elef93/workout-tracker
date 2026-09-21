@@ -1,1 +1,77 @@
-<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><title>My Workout Tracker</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css"></head><body><header><div><h1>Workout Tracker</h1><p>Progressive overload, χωρίς μαντεψιές.</p></div><button id="exportBtn">Export</button></header><main><section class="card"><div class="row"><label>Ημερομηνία<input id="date" type="date"></label><label>Μυϊκή ομάδα<select id="group"></select></label></div><div class="row"><label class="grow">Άσκηση<select id="exercise"></select></label><button id="addExerciseBtn" class="secondary">+ Άσκηση</button></div><div id="last" class="last">Δεν υπάρχει προηγούμενη καταγραφή.</div></section><section class="card"><div class="sectionTitle"><h2>Sets</h2><button id="addSetBtn">+ Set</button></div><div class="tableWrap"><table><thead><tr><th>Set</th><th>Kg</th><th>Reps</th><th></th></tr></thead><tbody id="sets"></tbody></table></div><label class="notesLabel">Σχόλια / Notes<textarea id="notes" rows="3" placeholder="π.χ. Ζέσταμα: 30kg × 10, 45kg × 6"></textarea></label><button id="saveBtn" class="save">Αποθήκευση προπόνησης</button></section><section class="card"><div class="sectionTitle"><h2>Ιστορικό</h2><button id="clearBtn" class="dangerGhost">Διαγραφή όλων</button></div><div id="history"></div></section></main><dialog id="exerciseDialog"><form method="dialog"><h3>Νέα άσκηση</h3><input id="newExercise" placeholder="π.χ. Incline Dumbbell Press" autocomplete="off"><div class="dialogBtns"><button value="cancel" class="secondary">Άκυρο</button><button id="confirmExercise" value="default">Προσθήκη</button></div></form></dialog><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0e13">
+<title>My Workout Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Workout Tracker</h1>
+    <p>Progressive overload, χωρίς μαντεψιές.</p>
+  </div>
+  <button id="exportBtn" class="secondary">Export</button>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <label>Ημερομηνία<input id="date" type="date"></label>
+      <label>Μυϊκή ομάδα<select id="group"></select></label>
+    </div>
+    <div class="row">
+      <label class="grow">Άσκηση<select id="exercise"></select></label>
+      <button id="addExerciseBtn" class="secondary">+ Άσκηση</button>
+    </div>
+    <div id="last" class="last">Δεν υπάρχει προηγούμενη καταγραφή.</div>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">
+      <h2>Sets</h2>
+      <button id="addSetBtn" class="secondary">+ Set</button>
+    </div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Set</th><th>Kg</th><th>Reps</th><th></th></tr></thead>
+        <tbody id="sets"></tbody>
+      </table>
+    </div>
+    <label class="notesLabel">Σχόλια / Notes
+      <textarea id="notes" rows="3" placeholder="π.χ. Ζέσταμα: 30kg × 10, 45kg × 6"></textarea>
+    </label>
+    <button id="saveBtn" class="save">Αποθήκευση προπόνησης</button>
+  </section>
+
+  <section class="card">
+    <div class="sectionTitle">
+      <h2>Ιστορικό</h2>
+      <button id="clearBtn" class="dangerGhost">Διαγραφή όλων</button>
+    </div>
+    <div class="legend" aria-label="Υπόμνημα χρωμάτων">
+      <span><i class="dot record"></i>Νέο record</span>
+      <span><i class="dot up"></i>Πάνω</span>
+      <span><i class="dot down"></i>Κάτω</span>
+    </div>
+    <div id="history"></div>
+  </section>
+</main>
+
+<dialog id="exerciseDialog">
+  <form method="dialog">
+    <h3>Νέα άσκηση</h3>
+    <input id="newExercise" placeholder="π.χ. Incline Dumbbell Press" autocomplete="off">
+    <div class="dialogBtns">
+      <button value="cancel" class="secondary">Άκυρο</button>
+      <button id="confirmExercise" value="default">Προσθήκη</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
