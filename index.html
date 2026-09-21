@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0c0e13">
+<meta name="theme-color" content="#6d4dff">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Workout">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>My Workout Tracker</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,60 +21,175 @@
     <h1>Workout Tracker</h1>
     <p>Progressive overload, χωρίς μαντεψιές.</p>
   </div>
-  <button id="exportBtn" class="secondary">Export</button>
+  <button id="settingsBtn" class="headerBtn" aria-label="Ρυθμίσεις">⚙️</button>
 </header>
 
 <main>
-  <section class="card">
-    <div class="row">
-      <label>Ημερομηνία<input id="date" type="date"></label>
-      <label>Μυϊκή ομάδα<select id="group"></select></label>
+  <!-- ───────── ΚΑΤΑΓΡΑΦΗ ───────── -->
+  <section id="view-log" class="view">
+    <div id="backupBanner" class="banner" hidden>
+      <span>💾 Τα δεδομένα σου μένουν μόνο σε αυτό το κινητό. Κάνε ένα backup.</span>
+      <button id="bannerExport" class="secondary">Backup</button>
     </div>
-    <div class="row">
-      <label class="grow">Άσκηση<select id="exercise"></select></label>
-      <button id="addExerciseBtn" class="secondary">+ Άσκηση</button>
-    </div>
-    <div id="last" class="last">Δεν υπάρχει προηγούμενη καταγραφή.</div>
+
+    <section class="card accent" id="logCard">
+      <div class="row two">
+        <label>Ημερομηνία<input id="date" type="date"></label>
+        <label>Μυϊκή ομάδα<select id="group"></select></label>
+      </div>
+      <div class="row">
+        <label class="grow">Άσκηση<select id="exercise"></select></label>
+        <div class="btnPair">
+          <button id="addExerciseBtn" class="secondary" aria-label="Νέα άσκηση">+ Άσκηση</button>
+          <button id="removeExerciseBtn" class="secondary iconOnly" aria-label="Αφαίρεση άσκησης από τη λίστα">🗑</button>
+        </div>
+      </div>
+      <div id="last" class="last">
+        <div id="lastText">Δεν υπάρχει προηγούμενη καταγραφή.</div>
+        <div id="hint" class="hint" hidden></div>
+        <button id="copyLastBtn" class="secondary small" hidden>↺ Αντιγραφή τελευταίων sets</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="editBanner" class="editBanner" hidden>
+        <span>✎ Επεξεργασία καταγραφής</span>
+        <button id="cancelEditBtn" class="secondary small">Ακύρωση</button>
+      </div>
+      <div class="sectionTitle">
+        <h2>Sets</h2>
+        <button id="addSetBtn" class="secondary">+ Set</button>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Set</th><th>Kg</th><th>Reps</th><th></th></tr></thead>
+          <tbody id="sets"></tbody>
+        </table>
+      </div>
+      <label class="notesLabel">Σχόλια / Notes
+        <textarea id="notes" rows="3" placeholder="π.χ. Ζέσταμα: 30kg × 10, 45kg × 6"></textarea>
+      </label>
+      <button id="saveBtn" class="save">Αποθήκευση προπόνησης</button>
+    </section>
+
+    <section class="card">
+      <div class="sectionTitle">
+        <h2>⏱ Ξεκούραση</h2>
+      </div>
+      <div class="timerChips">
+        <button class="chip timerChip" data-sec="60">1:00</button>
+        <button class="chip timerChip" data-sec="90">1:30</button>
+        <button class="chip timerChip" data-sec="120">2:00</button>
+        <button class="chip timerChip" data-sec="180">3:00</button>
+      </div>
+    </section>
   </section>
 
-  <section class="card">
-    <div class="sectionTitle">
-      <h2>Sets</h2>
-      <button id="addSetBtn" class="secondary">+ Set</button>
-    </div>
-    <div class="tableWrap">
-      <table>
-        <thead><tr><th>Set</th><th>Kg</th><th>Reps</th><th></th></tr></thead>
-        <tbody id="sets"></tbody>
-      </table>
-    </div>
-    <label class="notesLabel">Σχόλια / Notes
-      <textarea id="notes" rows="3" placeholder="π.χ. Ζέσταμα: 30kg × 10, 45kg × 6"></textarea>
-    </label>
-    <button id="saveBtn" class="save">Αποθήκευση προπόνησης</button>
+  <!-- ───────── ΙΣΤΟΡΙΚΟ ───────── -->
+  <section id="view-history" class="view" hidden>
+    <section class="card">
+      <div class="sectionTitle"><h2>Ιστορικό</h2></div>
+      <div id="filters" class="chips" role="group" aria-label="Φίλτρο μυϊκής ομάδας"></div>
+      <div class="legend" aria-label="Υπόμνημα χρωμάτων">
+        <span><i class="dot record"></i>Νέο record</span>
+        <span><i class="dot up"></i>Πάνω</span>
+        <span><i class="dot down"></i>Κάτω</span>
+      </div>
+      <div id="history"></div>
+      <button id="moreBtn" class="secondary more" hidden>Περισσότερα</button>
+    </section>
   </section>
 
-  <section class="card">
-    <div class="sectionTitle">
-      <h2>Ιστορικό</h2>
-      <button id="clearBtn" class="dangerGhost">Διαγραφή όλων</button>
-    </div>
-    <div class="legend" aria-label="Υπόμνημα χρωμάτων">
-      <span><i class="dot record"></i>Νέο record</span>
-      <span><i class="dot up"></i>Πάνω</span>
-      <span><i class="dot down"></i>Κάτω</span>
-    </div>
-    <div id="history"></div>
+  <!-- ───────── ΣΤΑΤΙΣΤΙΚΑ ───────── -->
+  <section id="view-stats" class="view" hidden>
+    <section class="card ringsCard">
+      <div class="sectionTitle"><h2>Αυτή την εβδομάδα</h2></div>
+      <div class="ringsWrap">
+        <div id="rings" class="rings"></div>
+        <ul id="ringLegend" class="ringLegend"></ul>
+      </div>
+      <div id="weekStrip" class="weekStrip"></div>
+    </section>
+
+    <div id="tiles" class="tiles"></div>
+
+    <section class="card">
+      <div class="sectionTitle"><h2>Πρόοδος άσκησης</h2></div>
+      <label class="plain">
+        <select id="chartExercise" aria-label="Άσκηση"></select>
+      </label>
+      <div id="metricChips" class="chips metric" role="group" aria-label="Μέτρηση">
+        <button class="chip on" data-m="kg" style="--c:var(--brand)">Top set</button>
+        <button class="chip" data-m="e1rm" style="--c:var(--brand)">Εκτ. 1RM</button>
+        <button class="chip" data-m="vol" style="--c:var(--brand)">Όγκος</button>
+      </div>
+      <div id="chart" class="chartBox"></div>
+      <div id="chartSummary" class="chartSummary"></div>
+    </section>
+
+    <section class="card">
+      <div class="sectionTitle"><h2>Sets ανά μυϊκή ομάδα</h2><span class="sub">30 ημέρες</span></div>
+      <div id="donut" class="donutWrap"></div>
+    </section>
+
+    <section class="card">
+      <div class="sectionTitle"><h2>🏆 Προσωπικά records</h2></div>
+      <div id="prList" class="prList"></div>
+    </section>
   </section>
 </main>
 
+<nav class="tabbar" aria-label="Πλοήγηση">
+  <button class="tab active" data-tab="log" aria-current="page"><span class="ti">🏋️</span>Καταγραφή</button>
+  <button class="tab" data-tab="history"><span class="ti">📒</span>Ιστορικό</button>
+  <button class="tab" data-tab="stats"><span class="ti">📊</span>Στατιστικά</button>
+</nav>
+
+<div id="timerPill" class="timerPill" hidden>
+  <span class="tpIcon">⏱</span>
+  <span id="timerLeft" class="tpTime">0:00</span>
+  <div class="tpBar"><i id="timerBar"></i></div>
+  <button id="timerPlus" aria-label="Πρόσθεσε 30 δευτερόλεπτα">+30″</button>
+  <button id="timerStop" aria-label="Σταμάτημα χρονομέτρου">✕</button>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
 <dialog id="exerciseDialog">
-  <form method="dialog">
+  <form method="dialog" id="exerciseForm">
     <h3>Νέα άσκηση</h3>
     <input id="newExercise" placeholder="π.χ. Incline Dumbbell Press" autocomplete="off">
     <div class="dialogBtns">
-      <button value="cancel" class="secondary">Άκυρο</button>
-      <button id="confirmExercise" value="default">Προσθήκη</button>
+      <button type="button" id="cancelExercise" class="secondary">Άκυρο</button>
+      <button id="confirmExercise" type="submit">Προσθήκη</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDialog">
+  <form method="dialog" id="settingsForm">
+    <h3>Ρυθμίσεις</h3>
+
+    <div class="setGroup">
+      <h4>Εβδομαδιαίοι στόχοι</h4>
+      <div class="row">
+        <label>Προπονήσεις<input id="goalWorkouts" type="number" inputmode="numeric" min="1" max="7"></label>
+        <label>Sets<input id="goalSets" type="number" inputmode="numeric" min="5" max="300"></label>
+      </div>
+    </div>
+
+    <div class="setGroup">
+      <h4>Δεδομένα</h4>
+      <div id="storageInfo" class="storageInfo"></div>
+      <div class="dataBtns">
+        <button type="button" id="exportBtn" class="secondary">⬆ Export</button>
+        <button type="button" id="importBtn" class="secondary">⬇ Import</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+      <button type="button" id="clearBtn" class="dangerGhost">Διαγραφή όλου του ιστορικού</button>
+    </div>
+
+    <div class="dialogBtns">
+      <button type="submit">Έτοιμο</button>
     </div>
   </form>
 </dialog>
