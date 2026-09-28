@@ -106,13 +106,39 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
   display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;
   background:var(--raised);color:var(--brand);font-weight:800;font-size:13px;
 }
-.setInput{min-width:78px;text-align:center;font-size:20px;font-weight:700;padding:13px 8px}
+.setInput{min-width:52px;width:52px;text-align:center;font-size:18px;font-weight:700;padding:13px 2px}
 .setInput.kg{background:#f1eeff}
 .setInput.reps{background:#fff0f7}
 .setInput.kg:focus,.setInput.reps:focus{background:#fff}
 .setInput::placeholder{font-weight:600;color:#aeb2c9}
+.setInput[type=number]::-webkit-outer-spin-button,.setInput[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.setInput[type=number]{-moz-appearance:textfield}
 .remove{background:transparent;color:var(--muted);padding:10px;box-shadow:none}
 .remove:hover{color:var(--danger)}
+
+/* Stepper +/- next to each kg/reps field */
+.stepperField{display:flex;align-items:center;gap:3px;justify-content:center}
+.stepBtn{
+  flex:none;width:28px;height:28px;padding:0;border-radius:9px;
+  background:var(--raised);color:var(--brand);font-weight:800;font-size:16px;line-height:1;
+  border:1.5px solid var(--line);box-shadow:none;display:grid;place-items:center;
+  touch-action:manipulation;user-select:none;
+}
+.stepBtn:active{background:var(--record-bg);border-color:var(--brand);transform:scale(.92)}
+
+/* Set number circle turns into a checkmark + pops when it's the current record set */
+.setNum.rec{background:var(--record);color:#fff}
+.setNum.pop{animation:setPop .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes setPop{0%{transform:scale(.55)}55%{transform:scale(1.3)}100%{transform:scale(1)}}
+
+/* Live comparison box under the sets table — updates colour as you type */
+.liveStatus{
+  margin-top:12px;padding:10px 12px;border-radius:12px;font-weight:700;font-size:14px;
+  background:var(--raised);color:var(--muted);transition:background .25s,color .25s;
+}
+.liveStatus.record{background:var(--record-bg);color:var(--record-ink)}
+.liveStatus.up{background:var(--up-bg);color:var(--up-ink)}
+.liveStatus.down{background:var(--down-bg);color:var(--down-ink)}
 
 .save{width:100%;margin-top:16px;padding:16px;font-size:16px;box-shadow:0 10px 20px -10px #6d4dffaa}
 .dangerGhost{background:transparent;color:var(--danger);border:1.5px solid #fbcfd9;font-size:13px;padding:10px 12px;width:100%}
@@ -332,4 +358,5 @@ dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing
   button:active{transform:none}
   .ringArc{animation:none}
   .toast{transition:none}
+  .setNum.pop{animation:none}
 }

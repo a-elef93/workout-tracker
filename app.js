@@ -112,14 +112,16 @@ function onExerciseChange(){
   const empty=[...sets.querySelectorAll('input')].every(i=>!i.value);
   if(empty&&!editingId)resetSets(Math.min(8,Math.max(3,lastOf(exercise.value)?.sets.length||0)));
   else placeholders();
+  updateLiveStatus();
 }
 function addSet(kg='',reps=''){
   const n=sets.children.length+1;
-  sets.insertAdjacentHTML('beforeend',`<tr><td><span class="setNum">${n}</span></td><td><input class="setInput kg" inputmode="decimal" type="number" step="0.5" min="0" value="${kg}"></td><td><input class="setInput reps" inputmode="numeric" type="number" min="0" value="${reps}"></td><td><button class="remove" aria-label="Αφαίρεση set">✕</button></td></tr>`);
+  sets.insertAdjacentHTML('beforeend',`<tr><td><span class="setNum">${n}</span></td><td><div class="stepperField"><button type="button" class="stepBtn minus" data-f="kg" aria-label="Λιγότερα κιλά">−</button><input class="setInput kg" inputmode="decimal" type="number" step="0.5" min="0" value="${kg}"><button type="button" class="stepBtn plus" data-f="kg" aria-label="Περισσότερα κιλά">+</button></div></td><td><div class="stepperField"><button type="button" class="stepBtn minus" data-f="reps" aria-label="Λιγότερα reps">−</button><input class="setInput reps" inputmode="numeric" type="number" min="0" value="${reps}"><button type="button" class="stepBtn plus" data-f="reps" aria-label="Περισσότερα reps">+</button></div></td><td><button class="remove" aria-label="Αφαίρεση set">✕</button></td></tr>`);
   placeholders();
+  updateLiveStatus();
 }
 function resetSets(n=3){sets.innerHTML='';for(let i=0;i<n;i++)addSet()}
-function renumber(){[...sets.children].forEach((r,i)=>r.querySelector('.setNum').textContent=i+1)}
+function renumber(){[...sets.children].forEach((r,i)=>{const num=r.querySelector('.setNum');num.textContent=i+1;num.classList.remove('rec','pop');delete num.dataset.rec})}
 // faint numbers from the last session, so you know what to beat
 function placeholders(){
   const l=lastOf(exercise.value);
@@ -165,10 +167,82 @@ function resetForm(){
 
 group.onchange=()=>fillExercises();
 exercise.onchange=onExerciseChange;
-$('#addSetBtn').onclick=()=>addSet();
-sets.onclick=e=>{if(e.target.classList.contains('remove')){e.target.closest('tr').remove();renumber()}};
+// "+ Set" copies the last row that actually has numbers in it, so you keep typing the same weight/reps
+$('#addSetBtn').onclick=()=>{
+  const rows=[...sets.querySelectorAll('tr')];
+  let src=null;
+  for(let i=rows.length-1;i>=0;i--){
+    const kg=rows[i].querySelector('.kg').value,reps=rows[i].querySelector('.reps').value;
+    if(kg||reps){src={kg,reps};break}
+  }
+  addSet(src?.kg||'',src?.reps||'');
+};
+$('#removeSetBtn').onclick=()=>{if(sets.children.length>1){sets.lastElementChild.remove();renumber();updateLiveStatus()}};
+sets.onclick=e=>{if(e.target.classList.contains('remove')){e.target.closest('tr').remove();renumber();updateLiveStatus()}};
+sets.addEventListener('input',updateLiveStatus);
 $('#copyLastBtn').onclick=()=>{const l=lastOf(exercise.value);if(!l)return;sets.innerHTML='';l.sets.forEach(s=>addSet(s.kg>0?s.kg:'',s.reps))};
 $('#cancelEditBtn').onclick=resetForm;
+
+/* ───── steppers: tap ±2.5kg / ±1 rep, hold to repeat fast ───── */
+let stepTimer=null,stepInterval=null;
+function clearStepTimers(){clearTimeout(stepTimer);clearInterval(stepInterval);stepTimer=stepInterval=null}
+function bumpInput(input,delta){
+  // empty field starts from the ghost (previous session) value, not from 0
+  const base=input.value!==''?Number(input.value):(Number(input.placeholder)||0);
+  let val=Math.max(0,base+delta);
+  val=input.classList.contains('kg')?Math.round(val*2)/2:Math.round(val);
+  input.value=fmt(val);
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+}
+sets.addEventListener('pointerdown',e=>{
+  const btn=e.target.closest('.stepBtn');if(!btn)return;
+  e.preventDefault();
+  const row=btn.closest('tr'),input=row.querySelector('.'+btn.dataset.f);
+  const dir=btn.classList.contains('plus')?1:-1,step=btn.dataset.f==='kg'?2.5:1;
+  const apply=()=>bumpInput(input,dir*step);
+  apply();clearStepTimers();
+  stepTimer=setTimeout(()=>{stepInterval=setInterval(apply,90)},450);
+});
+document.addEventListener('pointerup',clearStepTimers);
+document.addEventListener('pointercancel',clearStepTimers);
+
+/* ───── live record feedback: colours the box under Sets as you type ───── */
+function liveBadgeText(s){
+  const suffix=s.cls==='record'?'':` · record ${fmt(s.best)}${s.unit}`;
+  switch(s.cls){
+    case'record':return`🏆 Νέο record · +${fmt(s.delta)}${s.unit}`;
+    case'up':return`▲ Πάνω · +${fmt(s.delta)}${s.unit}${suffix}`;
+    case'down':return`▼ Κάτω · −${fmt(Math.abs(s.delta))}${s.unit}${suffix}`;
+    default:return`= Ίδια ${s.unit==='kg'?'κιλά':'reps'}${suffix}`;
+  }
+}
+function markRecordRow(idx){
+  [...sets.children].forEach((r,i)=>{
+    const num=r.querySelector('.setNum');
+    if(i===idx){
+      num.textContent='✓';num.classList.add('rec');
+      if(num.dataset.rec!=='on'){num.classList.remove('pop');void num.offsetWidth;num.classList.add('pop');num.dataset.rec='on'}
+    }else{
+      num.textContent=i+1;num.classList.remove('rec','pop');delete num.dataset.rec;
+    }
+  });
+}
+function updateLiveStatus(){
+  const box=$('#liveStatus');
+  const relevant=logs.filter(x=>x.exercise===exercise.value&&x.id!==editingId);
+  const filled=[...sets.querySelectorAll('tr')].map((r,i)=>({i,kg:Number(r.querySelector('.kg').value)||0,reps:Number(r.querySelector('.reps').value)||0})).filter(v=>v.reps>0);
+  if(!relevant.length||!filled.length){box.hidden=true;renumber();return}
+  const prevEntry=relevant.slice().sort(byNewest)[0];
+  const weighted=isWeighted(prevEntry),unitStr=weighted?'kg':'reps',valOf=v=>weighted?v.kg:v.reps;
+  let top=filled[0],topVal=valOf(top);
+  filled.forEach(v=>{const val=valOf(v);if(val>topVal){top=v;topVal=val}});
+  const prevTop=score(prevEntry),best=Math.max(...relevant.map(score));
+  let cls='same';
+  if(topVal>best)cls='record';else if(topVal>prevTop)cls='up';else if(topVal<prevTop)cls='down';
+  box.hidden=false;box.className='liveStatus '+cls;
+  box.textContent=liveBadgeText({cls,delta:topVal-prevTop,best,unit:unitStr});
+  markRecordRow(cls==='record'?top.i:-1);
+}
 
 $('#saveBtn').onclick=()=>{
   if(!exercise.value)return alert('Πρόσθεσε πρώτα μια άσκηση.');
@@ -181,7 +255,7 @@ $('#saveBtn').onclick=()=>{
   const st=computeStatuses().get(entry.id);
   const wasEdit=i>=0;
   resetForm();renderHistory();checkBackup();
-  if(st.cls==='record'){confetti();toast(`${badgeText(st)} · ${entry.exercise}`)}
+  if(st.cls==='record'){confetti();navigator.vibrate?.([40,60,40,60,120]);toast(`${badgeText(st)} · ${entry.exercise}`)}
   else toast(wasEdit?'✅ Ενημερώθηκε':`✅ Αποθηκεύτηκε · ${badgeText(st)}`);
 };
 
