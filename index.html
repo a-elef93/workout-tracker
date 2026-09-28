@@ -58,7 +58,10 @@
       </div>
       <div class="sectionTitle">
         <h2>Sets</h2>
-        <button id="addSetBtn" class="secondary">+ Set</button>
+        <div class="btnPair">
+          <button id="removeSetBtn" class="secondary" type="button">− Set</button>
+          <button id="addSetBtn" class="secondary" type="button">+ Set</button>
+        </div>
       </div>
       <div class="tableWrap">
         <table>
@@ -66,6 +69,7 @@
           <tbody id="sets"></tbody>
         </table>
       </div>
+      <div id="liveStatus" class="liveStatus" hidden></div>
       <label class="notesLabel">Σχόλια / Notes
         <textarea id="notes" rows="3" placeholder="π.χ. Ζέσταμα: 30kg × 10, 45kg × 6"></textarea>
       </label>
