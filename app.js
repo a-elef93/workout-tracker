@@ -7,7 +7,9 @@ function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));re
 let exercises=load('wt_exercises',null),logs=load('wt_logs',[]);
 if(!exercises||typeof exercises!=='object'||Array.isArray(exercises))exercises=defaults;
 if(!Array.isArray(logs))logs=[];
-let settings={goalWorkouts:4,goalSets:60,lastExport:0,...load('wt_settings',{})};
+let steps=load('wt_steps',{});   // {"2026-09-28": 8234} — daily totals from Apple Health or typed in
+if(!steps||typeof steps!=='object'||Array.isArray(steps))steps={};
+let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
 let editingId=null,historyFilter='all',historyLimit=30,chartExercise=null,chartMetric='kg';
 
 const $=s=>document.querySelector(s),group=$('#group'),exercise=$('#exercise'),sets=$('#sets'),date=$('#date');
@@ -34,6 +36,7 @@ function persist(){
     localStorage.setItem('wt_exercises',JSON.stringify(exercises));
     localStorage.setItem('wt_logs',JSON.stringify(logs));
     localStorage.setItem('wt_settings',JSON.stringify(settings));
+    localStorage.setItem('wt_steps',JSON.stringify(steps));
   }catch{toast('⚠️ Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος. Κάνε Export.')}
 }
 
@@ -439,7 +442,120 @@ function renderRecords(){
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
   $('#prList').innerHTML=rows.length?rows.map(r=>`<div class="pr" style="--c:${groupColor(r.group)}"><div class="prMain"><b>${escapeHtml(r.ex)}</b><span>${formatDate(r.date)}${r.e1?` · εκτ. 1RM ${fmt(Math.round(r.e1*2)/2)}kg`:''}</span></div><div class="prVal"><b>${setText({kg:r.kg,reps:r.reps})}</b></div></div>`).join(''):'<div class="empty">Τα records σου θα εμφανιστούν εδώ.</div>';
 }
-function renderStats(){renderRings();renderTiles();renderChart();renderDonut();renderRecords()}
+/* ───── steps (Apple Health via a Shortcut, or typed in) ─────
+   A web app can't read HealthKit, so a Shortcut named "WT Steps" copies
+   "WTSTEPS\n2026-09-28 8234\n..." to the clipboard and ↻ imports it.
+   Huawei/Garmin/Fitbit watches reach us by syncing into Apple Health. */
+const STEPS_SHORTCUT='WT Steps',STEPS_MARKER='WTSTEPS';
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const fmtInt=n=>Math.round(n).toLocaleString('el-GR');
+const shortK=n=>n>=1000?`${(n/1000).toFixed(1).replace('.',',')}k`:String(n);
+const validDay=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&dayKey(parseDay(d))===d;
+let awaitingShortcut=false;
+
+function toSteps(tok){
+  tok=tok.replace(/[  ]/g,'').replace(/[.,]+$/,'');
+  if(/^\d{1,3}([.,]\d{3})+$/.test(tok))return Number(tok.replace(/[.,]/g,''));   // 8.234 / 8,234 = thousands
+  return Math.round(Number(tok.replace(',','.')));
+}
+// one "yyyy-mm-dd … number" per line; the last number on the line wins (skips times like 00:00)
+function parseSteps(text){
+  const out={};
+  String(text||'').split(/[\r\n;]+/).forEach(line=>{
+    const m=line.match(/\d{4}-\d{2}-\d{2}/);if(!m)return;
+    const d=m[0];if(!validDay(d)||d>today())return;
+    const toks=line.slice(m.index+d.length).match(/\d[\d.,  ]*/g);if(!toks)return;
+    const n=toSteps(toks[toks.length-1]);
+    if(Number.isFinite(n)&&n>=0&&n<=200000)out[d]=n;
+  });
+  return out;
+}
+const textHash=t=>{let h=0;for(const c of t)h=(h*31+c.charCodeAt(0))|0;return h};
+function applySteps(found){
+  const n=Object.keys(found).length;
+  Object.assign(steps,found);settings.stepsSyncedAt=Date.now();
+  persist();renderSteps();$('#stepsSyncBtn').classList.remove('pulse');
+  toast(`✅ Βήματα: ενημερώθηκαν ${n} ${n===1?'μέρα':'μέρες'}`);
+}
+async function syncSteps(){
+  let text='';
+  try{text=await navigator.clipboard.readText()}catch{}
+  const fresh=text.includes(STEPS_MARKER)&&textHash(text)!==settings.stepsLastClip;   // same text as last time = stale, go get new numbers
+  if(fresh){
+    const found=parseSteps(text);
+    if(Object.keys(found).length){settings.stepsLastClip=textHash(text);settings.stepsShortcut=true;return applySteps(found)}
+    openStepsDialog(true);$('#stepsPaste').value=text;
+    return toast('⚠️ Το Shortcut έδωσε κείμενο χωρίς βήματα — δες τη μορφή');
+  }
+  if(isIOS&&settings.stepsShortcut){
+    awaitingShortcut=true;
+    location.href='shortcuts://run-shortcut?name='+encodeURIComponent(STEPS_SHORTCUT);
+    return;
+  }
+  openStepsDialog(!settings.stepsShortcut);
+}
+
+function stepsChart(days,goal,gymDays,t){
+  const W=320,H=150,top=16,base=112,slot=W/days.length,bw=24;
+  const max=Math.max(goal,...days.map(d=>steps[d]||0))*1.1,y=v=>base-(v/max)*(base-top);
+  const bars=days.map((d,i)=>{
+    const v=steps[d],cx=slot*i+slot/2,x=(cx-bw/2).toFixed(1);
+    const cls=v==null?'none':v>=goal?'met':'under',h=v==null?3:Math.max(3,base-y(v));
+    const L=DAY_LETTERS[(parseDay(d).getDay()+6)%7];
+    return `<rect class="bar ${cls}" x="${x}" y="${(base-h).toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="6"/>`+
+      (v!=null?`<text x="${cx}" y="${(base-h-5).toFixed(1)}" text-anchor="middle">${shortK(v)}</text>`:'')+
+      `<text class="${d===t?'today':''}" x="${cx}" y="${base+16}" text-anchor="middle">${d===t?'Σήμ':L}</text>`+
+      (gymDays.has(d)?`<circle class="gym" cx="${cx}" cy="${base+28}" r="3.5"/>`:'');
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Βήματα 7 ημερών"><line class="goal" x1="0" x2="${W}" y1="${y(goal).toFixed(1)}" y2="${y(goal).toFixed(1)}"/>${bars}</svg>`;
+}
+function renderSteps(){
+  const body=$('#stepsBody'),t=today(),goal=settings.goalSteps;
+  if(!Object.keys(steps).length){
+    body.innerHTML=`<div class="empty">Σύνδεσε το Apple Health — και μέσω αυτού Huawei, Garmin, Fitbit — για να βλέπεις βήματα δίπλα στις προπονήσεις σου. Ή πέρασέ τα με το ✎.</div><button type="button" class="secondary stepsSetup" data-steps-setup>Πώς το συνδέω</button>`;
+    return;
+  }
+  const tv=steps[t],pct=tv==null?0:Math.min(100,tv/goal*100),met=tv!=null&&tv>=goal;
+  const s=settings.stepsSyncedAt,when=!s?'':dayKey(new Date(s))===t?`σήμερα ${new Date(s).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}`:formatDate(dayKey(new Date(s)));
+  const gymDays=new Set(logs.map(l=>l.date));
+  const last7=[...Array(7)].map((_,i)=>addDays(t,i-6));
+  // insights use finished days only — today's count is still growing
+  const done=n=>[...Array(n)].map((_,i)=>addDays(t,-n+i)).filter(d=>steps[d]!=null);
+  const avg=a=>a.reduce((x,d)=>x+steps[d],0)/a.length;
+  const d7=done(7),d30=done(30),gym=d30.filter(d=>gymDays.has(d)),rest=d30.filter(d=>!gymDays.has(d));
+  const tips=[];
+  if(d7.length)tips.push(`Μ.Ο. 7 ημερών: <b>${fmtInt(avg(d7))}</b> · στόχος σε <b>${d7.filter(d=>steps[d]>=goal).length}/${d7.length}</b> μέρες`);
+  if(gym.length>=2&&rest.length>=2)tips.push(`🏋️ Μέρες προπόνησης: <b>${fmtInt(avg(gym))}</b> βήματα · ξεκούρασης: <b>${fmtInt(avg(rest))}</b>`);
+  body.innerHTML=`<div class="stepsToday"><div class="stNum"><b>${tv==null?'—':fmtInt(tv)}</b><span>/ ${fmtInt(goal)} σήμερα</span>${met?'<span class="goalOk">✓ Στόχος</span>':''}</div><div class="stepsBar${met?' met':''}"><i style="width:${pct}%"></i></div>${when?`<small>Τελευταίος συγχρονισμός: ${when}</small>`:''}</div>
+  <div class="stepsChart">${stepsChart(last7,goal,gymDays,t)}</div>
+  <div class="legend stepsLegend"><span><i class="dot met"></i>Στόχος</span><span><i class="dot under"></i>Κάτω από στόχο</span><span><i class="dot gym"></i>Προπόνηση</span></div>
+  ${tips.length?`<div class="stepsInsight">${tips.map(x=>`<div>${x}</div>`).join('')}</div>`:''}`;
+}
+
+const stepsDlg=$('#stepsDialog');
+function openStepsDialog(showHelp){
+  $('#stepsDate').value=today();$('#stepsDate').max=today();
+  $('#stepsValue').value=steps[today()]??'';$('#stepsPaste').value='';
+  $('#stepsHowto').open=!!showHelp;stepsDlg.showModal();
+}
+$('#stepsSyncBtn').onclick=syncSteps;
+$('#stepsEditBtn').onclick=()=>openStepsDialog(false);
+$('#stepsBody').onclick=e=>{if(e.target.closest('[data-steps-setup]'))openStepsDialog(true)};
+$('#stepsDate').onchange=()=>{$('#stepsValue').value=steps[$('#stepsDate').value]??''};
+$('#stepsSaveDay').onclick=()=>{
+  const d=$('#stepsDate').value;if(!validDay(d)||d>today())return toast('Διάλεξε ημέρα μέχρι σήμερα');
+  const v=$('#stepsValue').value;
+  if(v==='')delete steps[d];   // empty = remove that day
+  else{const n=Math.round(Number(v));if(!(n>=0&&n<=200000))return toast('Μη έγκυρος αριθμός βημάτων');steps[d]=n}
+  persist();renderSteps();stepsDlg.close();toast('✅ Αποθηκεύτηκε');
+};
+$('#stepsImport').onclick=()=>{
+  const found=parseSteps($('#stepsPaste').value);
+  if(!Object.keys(found).length)return toast('Δεν βρέθηκαν βήματα — κάθε γραμμή: 2026-09-28 8234');
+  stepsDlg.close();applySteps(found);
+};
+
+function renderStats(){renderRings();renderSteps();renderTiles();renderChart();renderDonut();renderRecords()}
 
 /* ───── tabs ───── */
 function switchTab(t){
@@ -457,16 +573,17 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.t
 /* ───── settings & data ───── */
 const settingsDlg=$('#settingsDialog');
 async function openSettings(){
-  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;
+  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;
   settingsDlg.showModal();
-  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
+  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
-  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε Export πού και πού.'}`;
+  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε Export πού και πού.'}`;
 }
 $('#settingsBtn').onclick=openSettings;
 settingsDlg.addEventListener('close',()=>{
   settings.goalWorkouts=clamp(Number($('#goalWorkouts').value),1,7,4);
   settings.goalSets=clamp(Number($('#goalSets').value),5,300,60);
+  settings.goalSteps=clamp(Number($('#goalSteps').value),1000,50000,8000);
   persist();if(!$('#view-stats').hidden)renderStats();
 });
 
@@ -475,7 +592,7 @@ function checkBackup(){
   $('#backupBanner').hidden=!(logs.length>=5&&days>30);
 }
 async function exportData(){
-  const json=JSON.stringify({version:2,exportedAt:new Date().toISOString(),exercises,logs,settings},null,2);
+  const json=JSON.stringify({version:3,exportedAt:new Date().toISOString(),exercises,logs,steps,settings},null,2);
   const file=new File([json],`workout-backup-${today()}.json`,{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Workout backup'});
@@ -499,22 +616,28 @@ $('#importFile').onchange=async e=>{
       sets:Array.isArray(l.sets)?l.sets.map(s=>({kg:Math.max(0,Number(s.kg)||0),reps:Number(s.reps)||0})).filter(s=>s.reps>0):[],
       notes:String(l.notes||''),
     }).filter(l=>l&&l.date&&l.group&&l.exercise&&l.sets.length&&!known.has(l.id));
-    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο). Συγχώνευση με τις υπάρχουσες;`))return;
-    logs.push(...fresh);
+    // steps: only fill days we don't have — what's on the phone is newer
+    const newSteps={};
+    if(d.steps&&typeof d.steps==='object'&&!Array.isArray(d.steps))Object.entries(d.steps).forEach(([k,v])=>{const n=Math.round(Number(v));if(validDay(k)&&!(k in steps)&&n>=0&&n<=200000)newSteps[k]=n});
+    const sn=Object.keys(newSteps).length;
+    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
+    logs.push(...fresh);Object.assign(steps,newSteps);
     Object.entries(d.exercises||{}).forEach(([g,list])=>{if(Array.isArray(list))exercises[g]=[...new Set([...(exercises[g]||[]),...list.map(String)])]});
     fresh.forEach(l=>{const list=exercises[l.group]||(exercises[l.group]=[]);if(!list.includes(l.exercise))list.push(l.exercise)});
-    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές`);
+    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}`);
   }catch{alert('Το αρχείο δεν φαίνεται να είναι σωστό backup.')}
 };
 
 $('#clearBtn').onclick=()=>{
-  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό; Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
-  logs=[];persist();settingsDlg.close();resetForm();renderHistory();checkBackup();
+  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις και βήματα); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
+  logs=[];steps={};persist();settingsDlg.close();resetForm();renderHistory();checkBackup();
 };
 
 /* ───── init ───── */
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden)return;
+  // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
+  if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
   if(!editingId&&!$('#view-log').hidden&&date.value<today()&&sets.querySelectorAll('input:not(:placeholder-shown)').length===0)date.value=today();
 });

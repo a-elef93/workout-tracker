@@ -115,6 +115,17 @@
       <div id="weekStrip" class="weekStrip"></div>
     </section>
 
+    <section class="card" id="stepsCard">
+      <div class="sectionTitle">
+        <h2>👣 Βήματα</h2>
+        <div class="btnPair">
+          <button id="stepsEditBtn" class="secondary small" type="button" aria-label="Χειροκίνητη καταχώριση βημάτων">✎</button>
+          <button id="stepsSyncBtn" class="small" type="button">↻ Συγχρονισμός</button>
+        </div>
+      </div>
+      <div id="stepsBody"></div>
+    </section>
+
     <div id="tiles" class="tiles"></div>
 
     <section class="card">
@@ -169,15 +180,59 @@
   </form>
 </dialog>
 
+<dialog id="stepsDialog">
+  <form method="dialog">
+    <h3>👣 Βήματα</h3>
+
+    <div class="setGroup">
+      <h4>Χειροκίνητα</h4>
+      <div class="row two">
+        <label>Ημέρα<input id="stepsDate" type="date"></label>
+        <label>Βήματα<input id="stepsValue" type="number" inputmode="numeric" min="0" max="200000" placeholder="π.χ. 8500"></label>
+      </div>
+      <button type="button" id="stepsSaveDay" class="secondary wide">Αποθήκευση ημέρας</button>
+    </div>
+
+    <div class="setGroup">
+      <h4>Από Apple Health</h4>
+      <textarea id="stepsPaste" rows="4" placeholder="Επικόλλησε εδώ ό,τι αντέγραψε το Shortcut «WT Steps»"></textarea>
+      <button type="button" id="stepsImport" class="secondary wide">Εισαγωγή</button>
+
+      <details id="stepsHowto" class="howto">
+        <summary>Πώς το συνδέω με Apple Health / Huawei;</summary>
+        <ol>
+          <li><b>Huawei ή άλλο ρολόι:</b> στην εφαρμογή <b>Huawei Health</b> του iPhone βρες την κοινή χρήση δεδομένων (συνήθως <i>Εγώ → Ρυθμίσεις → Κοινή χρήση δεδομένων</i>) και ενεργοποίησε το <b>Υγεία</b> για τα βήματα. Το ίδιο υπάρχει σε Garmin Connect, Fitbit κ.ά. Αν έχεις μόνο iPhone ή Apple Watch, προχώρα στο επόμενο.</li>
+          <li>Στην εφαρμογή <b>Συντομεύσεις</b> φτιάξε νέα συντόμευση με όνομα ακριβώς <code>WT Steps</code> και αυτές τις ενέργειες:
+            <ol>
+              <li><b>Find Health Samples</b> (Εύρεση δειγμάτων Υγείας): τύπος <i>Βήματα</i>, ημερομηνία έναρξης <i>στις τελευταίες 14 ημέρες</i>, ομαδοποίηση ανά <i>Ημέρα</i>.</li>
+              <li><b>Repeat with Each</b> (Επανάληψη με καθένα) στα δείγματα. Μέσα: <b>Format Date</b> την <i>Ημερομηνία έναρξης</i> του στοιχείου με προσαρμοσμένη μορφή <code>yyyy-MM-dd</code>, και μετά <b>Text</b> με <code>[ημερομηνία] [Τιμή]</code>.</li>
+              <li><b>Combine Text</b> τα αποτελέσματα της επανάληψης με <i>Νέες γραμμές</i>.</li>
+              <li><b>Text</b>: γράψε <code>WTSTEPS</code>, άλλαξε γραμμή και βάλε το συνδυασμένο κείμενο.</li>
+              <li><b>Copy to Clipboard</b> (Αντιγραφή στο πρόχειρο).</li>
+            </ol>
+          </li>
+          <li>Τρέξε τη συντόμευση μία φορά, γύρνα εδώ και πάτα <b>↻ Συγχρονισμός</b>. Από εκεί και πέρα το κουμπί τρέχει μόνο του το Shortcut· μόλις επιστρέψεις, πάτα το ξανά για να περαστούν.</li>
+        </ol>
+        <p class="note">Αν τα βήματα βγαίνουν διπλά (iPhone + ρολόι), στο Υγεία → Βήματα → Πηγές δεδομένων βάλε το ρολόι πρώτο. Σύγκρινε την πρώτη φορά με τον αριθμό που δείχνει το Υγεία.</p>
+      </details>
+    </div>
+
+    <div class="dialogBtns">
+      <button type="submit">Κλείσιμο</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="settingsDialog">
   <form method="dialog" id="settingsForm">
     <h3>Ρυθμίσεις</h3>
 
     <div class="setGroup">
-      <h4>Εβδομαδιαίοι στόχοι</h4>
+      <h4>Στόχοι</h4>
       <div class="row">
-        <label>Προπονήσεις<input id="goalWorkouts" type="number" inputmode="numeric" min="1" max="7"></label>
-        <label>Sets<input id="goalSets" type="number" inputmode="numeric" min="5" max="300"></label>
+        <label>Προπονήσεις / εβδ.<input id="goalWorkouts" type="number" inputmode="numeric" min="1" max="7"></label>
+        <label>Sets / εβδ.<input id="goalSets" type="number" inputmode="numeric" min="5" max="300"></label>
+        <label>Βήματα / μέρα<input id="goalSteps" type="number" inputmode="numeric" min="1000" max="50000" step="500"></label>
       </div>
     </div>
 
