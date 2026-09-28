@@ -355,6 +355,43 @@ dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing
 .dataBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .storageInfo{font-size:13px;color:var(--muted);background:var(--raised);border-radius:12px;padding:10px 12px;margin-bottom:10px;line-height:1.5}
 
+/* ───── Steps ───── */
+.stepsToday{display:grid;gap:8px;margin-bottom:6px}
+.stepsToday .stNum{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.stepsToday b{font-size:30px;line-height:1;letter-spacing:-.02em}
+.stepsToday span{font-size:13px;color:var(--muted);font-weight:600}
+.stepsToday .goalOk{background:var(--up-bg);color:var(--up-ink);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800}
+.stepsToday small{font-size:11px;color:var(--muted);font-weight:600}
+.stepsBar{height:10px;border-radius:5px;background:var(--raised);overflow:hidden}
+.stepsBar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--ring-3),var(--ring-2));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.stepsBar.met i{background:linear-gradient(90deg,var(--brand),var(--up))}
+.stepsChart svg{width:100%;height:auto;display:block;overflow:visible}
+.stepsChart .bar.met{fill:var(--brand)}
+.stepsChart .bar.under{fill:var(--ring-3)}
+.stepsChart .bar.none{fill:var(--line)}
+.stepsChart .goal{stroke:var(--coffee);stroke-width:1.2;stroke-dasharray:4 4;opacity:.55}
+.stepsChart text{font-size:10px;fill:var(--muted);font-weight:700;font-family:inherit}
+.stepsChart text.today{fill:var(--brand-2)}
+.stepsChart .gym{fill:var(--coffee)}
+.stepsLegend{margin:4px 0 0}
+.dot.met{background:var(--brand)}
+.dot.under{background:var(--ring-3)}
+.dot.gym{background:var(--coffee);width:7px;height:7px}
+.stepsInsight{display:grid;gap:6px;margin-top:10px;font-size:13px;color:var(--muted);font-weight:600}
+.stepsInsight div{background:var(--raised);border-radius:10px;padding:8px 10px}
+.stepsInsight b{color:var(--text)}
+.stepsSetup{width:100%;margin-top:10px}
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px #22a55f38}}
+
+.wide{width:100%;margin-top:8px}
+.howto{margin-top:12px;font-size:13px;line-height:1.45;background:var(--raised);border-radius:12px;padding:10px 12px}
+.howto summary{font-weight:700;color:var(--brand-2);cursor:pointer}
+.howto ol{padding-left:18px;margin:8px 0 0;display:grid;gap:6px}
+.howto code{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:12px}
+.howto .note{margin:10px 0 0;color:var(--muted);font-size:12px}
+dialog{max-height:90vh;overflow:auto}
+
 @media(max-width:520px){
   .row{align-items:stretch;flex-direction:column}
   .row button{width:100%}
@@ -370,4 +407,6 @@ dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing
   .ringArc{animation:none}
   .toast{transition:none}
   .setNum.pop{animation:none}
+  .pulse{animation:none}
+  .stepsBar i{transition:none}
 }
