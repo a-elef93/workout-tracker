@@ -1,6 +1,6 @@
 const defaults={"Chest":["Bench Press","Incline Dumbbell Press","Chest Press","Cable Fly"],"Back":["Lat Pulldown","Seated Cable Row","Chest Supported Row","One Arm Dumbbell Row"],"Shoulders":["Shoulder Press","Lateral Raise","Rear Delt Fly"],"Biceps":["Barbell Curl","Dumbbell Curl","Hammer Curl"],"Triceps":["Cable Pushdown","Overhead Extension","Skull Crusher"],"Legs":["Leg Press","Leg Extension","Leg Curl","Romanian Deadlift","Calf Raise"],"Abs":["Cable Crunch","Leg Raise","Plank"]};
-const GROUP_COLORS={Chest:'#ff5d73',Back:'#3b82f6',Shoulders:'#f59e0b',Biceps:'#10b981',Triceps:'#06b6d4',Legs:'#8b5cf6',Abs:'#ec4899'};
-const EXTRA_COLORS=['#f97316','#14b8a6','#6366f1','#84cc16','#e11d48'];
+const GROUP_COLORS={Chest:'#d9734e',Back:'#2a9d8f',Shoulders:'#e0a336',Biceps:'#3fb56b',Triceps:'#7a9e3f',Legs:'#6a7fa0',Abs:'#c98b6b'};
+const EXTRA_COLORS=['#b5835a','#3e8e7e','#9aa84a','#a0522d','#6f8f72'];
 const DAY_LETTERS=['Δ','Τ','Τ','Π','Π','Σ','Κ'];
 
 function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));return v??fallback}catch{return fallback}}
@@ -393,7 +393,7 @@ function lineChart(pts){
   const ticks=[min,(min+max)/2,max].map(v=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${fmt(Math.round(v*2)/2)}</text>`).join('');
   let runMax=-Infinity;
   const dots=pts.map((p,i)=>{const pr=p.v>runMax&&i>0;runMax=Math.max(runMax,p.v);return`<circle class="pt${i===n-1?' last':''}${pr?' pr':''}" cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${i===n-1?5:3.5}"/>`}).join('');
-  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Γράφημα προόδου"><defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d4dff" stop-opacity=".28"/><stop offset="1" stop-color="#6d4dff" stop-opacity="0"/></linearGradient><linearGradient id="lineG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6d4dff"/><stop offset="1" stop-color="#c026d3"/></linearGradient></defs>${ticks}<path d="${area}" fill="url(#areaG)"/><path class="line" d="${line}"/>${dots}<text x="${L}" y="${H-8}" text-anchor="start">${shortDate(pts[0].date)}</text>${n>1?`<text x="${W-R}" y="${H-8}" text-anchor="end">${shortDate(pts[n-1].date)}</text>`:''}</svg>`;
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Γράφημα προόδου"><defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22a55f" stop-opacity=".28"/><stop offset="1" stop-color="#22a55f" stop-opacity="0"/></linearGradient><linearGradient id="lineG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#34c07a"/><stop offset="1" stop-color="#15844a"/></linearGradient></defs>${ticks}<path d="${area}" fill="url(#areaG)"/><path class="line" d="${line}"/>${dots}<text x="${L}" y="${H-8}" text-anchor="start">${shortDate(pts[0].date)}</text>${n>1?`<text x="${W-R}" y="${H-8}" text-anchor="end">${shortDate(pts[n-1].date)}</text>`:''}</svg>`;
 }
 function renderChart(){
   const names=[...new Set([...logs].sort(byNewest).map(l=>l.exercise))];
@@ -423,7 +423,7 @@ function renderDonut(){
     const s=`<circle cx="60" cy="60" r="${r}" fill="none" stroke="${groupColor(g)}" stroke-width="16" stroke-dasharray="${len-gap} ${c-len+gap}" stroke-dashoffset="${-acc}" transform="rotate(-90 60 60)"/>`;
     acc+=len;return s;
   }).join('');
-  $('#donut').innerHTML=`<div class="donut"><svg viewBox="0 0 120 120" role="img" aria-label="Κατανομή sets ανά μυϊκή ομάδα"><circle cx="60" cy="60" r="${r}" fill="none" stroke="#f3f1fb" stroke-width="16"/>${arcs}</svg><div class="donutCenter"><b>${total}</b><span>sets</span></div></div><ul class="donutLegend">${rows.map(([g,n])=>`<li style="--c:${groupColor(g)}"><i></i><span>${escapeHtml(g)}</span><em>${n} · ${Math.round(n/total*100)}%</em></li>`).join('')}</ul>`;
+  $('#donut').innerHTML=`<div class="donut"><svg viewBox="0 0 120 120" role="img" aria-label="Κατανομή sets ανά μυϊκή ομάδα"><circle cx="60" cy="60" r="${r}" fill="none" stroke="#eef5ec" stroke-width="16"/>${arcs}</svg><div class="donutCenter"><b>${total}</b><span>sets</span></div></div><ul class="donutLegend">${rows.map(([g,n])=>`<li style="--c:${groupColor(g)}"><i></i><span>${escapeHtml(g)}</span><em>${n} · ${Math.round(n/total*100)}%</em></li>`).join('')}</ul>`;
 }
 
 function renderRecords(){
