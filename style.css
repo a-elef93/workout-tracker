@@ -31,13 +31,16 @@ header{
   padding:calc(22px + env(safe-area-inset-top)) 18px 30px;
   display:flex;justify-content:space-between;align-items:center;gap:16px;
   color:#fff;position:relative;overflow:hidden;
-  background:linear-gradient(135deg,#1f9d5c 0%,#34c07a 55%,#5edc93 100%);
+  /* espresso with a soft green glow, so white "Gym" + green "Pilot" read like the brand sheet */
+  background:
+    radial-gradient(520px 260px at 88% -10%,#22a55f55,transparent 70%),
+    linear-gradient(135deg,#24180f 0%,#3a2719 60%,#4a3322 100%);
   border-radius:0 0 28px 28px;
-  box-shadow:0 10px 30px -14px #1f9d5c99;
+  box-shadow:0 12px 30px -14px #24180fcc;
 }
 /* faint chart-like hills in the header, like the reference design */
 header::after{
-  content:"";position:absolute;left:0;right:0;bottom:0;height:75%;pointer-events:none;opacity:.16;
+  content:"";position:absolute;left:0;right:0;bottom:0;height:75%;pointer-events:none;opacity:.05;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 72 C30 50 50 48 75 62 S120 30 150 38 S200 70 230 52 S280 18 310 34 S370 60 400 44 L400 100 L0 100Z' fill='white'/%3E%3C/svg%3E") bottom/100% 100% no-repeat;
 }
 header>*{position:relative;z-index:1}
@@ -49,9 +52,12 @@ body.onLog h1{font-size:34px}
 /* big faint dumbbell logo inside the green */
 header>.headerLogo{
   position:absolute;z-index:0;right:-26px;bottom:-22px;width:210px;height:210px;
-  color:#fff;opacity:.17;transition:width .3s,height .3s,opacity .3s;
+  opacity:.08;transition:width .3s,height .3s,opacity .3s;
 }
-body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:-42px;opacity:.12}
+body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:-42px;opacity:.06}
+.headerText{display:flex;align-items:center;gap:12px;min-width:0}
+.brandMark{flex:none;width:44px;height:44px}
+body.onLog .brandMark{width:60px;height:60px}
 /* backup reminder lives on the gear now */
 .headerBtn.needsBackup::after{
   content:"";position:absolute;top:7px;right:7px;width:11px;height:11px;border-radius:50%;
@@ -60,10 +66,11 @@ body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:
 h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0}
 h2{color:var(--coffee-ink)}
 .brand{letter-spacing:-.03em}
-.brand span{font-weight:500;opacity:.92}
-header p{margin:4px 0 0;color:#ffffffe6;font-size:13px}
+.brand span{color:#4cd88a}
+header p{margin:4px 0 0;color:#e9e0d6;font-size:13px;letter-spacing:.01em}
+body.onLog header p{font-size:15px}
 .headerBtn{
-  background:#ffffff2e;color:#fff;border:1px solid #ffffff40;border-radius:14px;
+  background:#ffffff14;color:#fff;border:1px solid #ffffff2a;border-radius:14px;
   width:44px;height:44px;padding:0;font-size:20px;line-height:1;
 }
 
