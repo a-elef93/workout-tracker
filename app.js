@@ -588,7 +588,7 @@ function renderStats(){renderRings();renderSteps();renderTiles();renderChart();r
 /* ───── tabs ───── */
 function switchTab(t){
   document.body.classList.toggle('onLog',t==='log');   // the tall header banner is only on the log screen
-  ['log','history','stats'].forEach(v=>$('#view-'+v).hidden=v!==t);
+  ['log','history','stats','nutrition'].forEach(v=>$('#view-'+v).hidden=v!==t);
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===t;b.classList.toggle('active',on);
     on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');

@@ -20,7 +20,7 @@
   <svg class="headerLogo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="34" stroke-linecap="round"><path d="M112 256h288"/><path d="M145 190v132M105 213v86M367 190v132M407 213v86"/></g></svg>
   <div class="headerText">
     <h1>Workout Tracker</h1>
-    <p>Progressive overload.</p>
+    <p>Lift. Push. Progress.</p>
   </div>
   <button id="settingsBtn" class="headerBtn" aria-label="Ρυθμίσεις">⚙️</button>
 </header>
@@ -149,12 +149,30 @@
       <div id="prList" class="prList"></div>
     </section>
   </section>
+  <!-- ───────── ΔΙΑΤΡΟΦΗ (coming soon) ───────── -->
+  <section id="view-nutrition" class="view" hidden>
+    <section class="card soonHero">
+      <span class="soonBadge">Coming soon</span>
+      <h2>🥗 Διατροφή</h2>
+      <p>Σύντομα θα συνδέεις εδώ το πρόγραμμα διατροφής σου, ώστε προπόνηση, βήματα και φαγητό να είναι όλα σε ένα σημείο.</p>
+    </section>
+    <section class="card">
+      <div class="sectionTitle"><h2>Τι έρχεται</h2></div>
+      <ul class="soonList">
+        <li><span class="soonIcon">🍎</span><div><b>Θερμίδες &amp; πρωτεΐνη από Apple Health</b><span>Από MyFitnessPal, Cronometer, Yazio κ.ά., με τον ίδιο συγχρονισμό που έχουν τα βήματα.</span></div></li>
+        <li><span class="soonIcon">📄</span><div><b>Το πρόγραμμα του διατροφολόγου σου</b><span>Ανέβασε το PDF ή μια φωτογραφία και τσέκαρε τα γεύματα της ημέρας.</span></div></li>
+        <li><span class="soonIcon">🎯</span><div><b>Στόχος πρωτεΐνης</b><span>Από το βάρος σου, με διαφορετικό στόχο σε μέρες προπόνησης και ξεκούρασης.</span></div></li>
+        <li><span class="soonIcon">⚖️</span><div><b>Σωματικό βάρος</b><span>Καταγραφή και γράφημα δίπλα στη δύναμη και τα βήματα.</span></div></li>
+      </ul>
+    </section>
+  </section>
 </main>
 
 <nav class="tabbar" aria-label="Πλοήγηση">
   <button class="tab active" data-tab="log" aria-current="page"><span class="ti">🏋️</span>Καταγραφή</button>
   <button class="tab" data-tab="history"><span class="ti">📒</span>Ιστορικό</button>
   <button class="tab" data-tab="stats"><span class="ti">📊</span>Στατιστικά</button>
+  <button class="tab" data-tab="nutrition"><span class="ti">🥗</span>Διατροφή<i class="soonDot" aria-label="Σύντομα"></i></button>
 </nav>
 
 <div id="timerPill" class="timerPill" hidden>
