@@ -154,6 +154,24 @@
   </section>
   <!-- ───────── ΔΙΑΤΡΟΦΗ ───────── -->
   <section id="view-nutrition" class="view" hidden>
+    <section class="card weightCard">
+      <div class="sectionTitle">
+        <h2>⚖️ Ζύγισμα</h2>
+        <button id="weightGoalBtn" class="secondary small" type="button">🎯 Στόχος</button>
+      </div>
+      <div id="weightNow" class="weightNow"></div>
+      <div id="weightProgress" class="wGoalBox"></div>
+      <form id="weightForm" class="weightForm">
+        <div class="row two">
+          <label>Ημέρα<input id="weightDate" type="date"></label>
+          <label>Κιλά<input id="weightKg" type="text" inputmode="decimal" autocomplete="off" placeholder="π.χ. 82,4"></label>
+        </div>
+        <button type="submit" class="wide">Καταχώριση ζυγίσματος</button>
+      </form>
+      <div id="weightChart" class="chartBox weightChart"></div>
+      <div id="weightLog" class="waterLog"></div>
+    </section>
+
     <section class="card waterCard">
       <div class="sectionTitle">
         <h2>💧 Νερό σήμερα</h2>
@@ -179,6 +197,17 @@
       <div id="waterLog" class="waterLog"></div>
     </section>
 
+    <section class="card ringsCard nutWeek">
+      <div class="sectionTitle"><h2>📅 Η εβδομάδα σου</h2><span id="nutWeekRange" class="sub"></span></div>
+      <div class="ringsWrap">
+        <div id="nutRings" class="rings"></div>
+        <ul id="nutRingLegend" class="ringLegend"></ul>
+      </div>
+      <div id="nutWeekNote" class="stepsInsight"></div>
+      <h3 class="logTitle">Εβδομαδιαίο log</h3>
+      <div id="nutWeeks" class="weekLog"></div>
+    </section>
+
     <section class="card soonHero">
       <span class="soonBadge">Coming soon</span>
       <h2>🥗 Το πρόγραμμα διατροφής σου</h2>
@@ -187,8 +216,6 @@
         <li><span class="soonIcon">📄</span><div><b>Πρόγραμμα διατροφολόγου</b><span>Ανέβασε το PDF ή μια φωτογραφία του προγράμματος, με τους στόχους του.</span></div></li>
         <li><span class="soonIcon">✅</span><div><b>Γεύματα της ημέρας</b><span>Τσέκαρε κάθε γεύμα όταν το τρως.</span></div></li>
         <li><span class="soonIcon">🔥</span><div><b>Θερμίδες &amp; πρωτεΐνη</b><span>Tracking σε σχέση με τον στόχο του προγράμματός σου.</span></div></li>
-        <li><span class="soonIcon">⚖️</span><div><b>Ζύγισμα</b><span>Log βάρους με γράφημα πορείας.</span></div></li>
-        <li><span class="soonIcon">📊</span><div><b>Εβδομαδιαία σύνοψη</b><span>Δαχτυλίδια και γραφήματα, όπως στις προπονήσεις.</span></div></li>
       </ul>
     </section>
   </section>
@@ -281,6 +308,7 @@
         <label>Sets / εβδ.<input id="goalSets" type="number" inputmode="numeric" min="5" max="300"></label>
         <label>Βήματα / μέρα<input id="goalSteps" type="number" inputmode="numeric" min="1000" max="50000" step="500"></label>
         <label>Νερό / μέρα (ml)<input id="goalWater" type="number" inputmode="numeric" min="500" max="8000" step="250"></label>
+        <label>Στόχος βάρους (kg)<input id="goalWeight" type="text" inputmode="decimal" autocomplete="off" placeholder="π.χ. 78"></label>
       </div>
     </div>
 

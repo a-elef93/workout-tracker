@@ -7,11 +7,13 @@ function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));re
 let exercises=load('wt_exercises',null),logs=load('wt_logs',[]);
 if(!exercises||typeof exercises!=='object'||Array.isArray(exercises))exercises=defaults;
 if(!Array.isArray(logs))logs=[];
+let weights=load('wt_weight',{});   // {"2026-10-02": 82.4} — one weigh-in per day
+if(!weights||typeof weights!=='object'||Array.isArray(weights))weights={};
 let water=load('wt_water',{});   // {"2026-10-02":[{t:1759400000000,ml:250},…]} — each drink, so any one can be undone
 if(!water||typeof water!=='object'||Array.isArray(water))water={};
 let steps=load('wt_steps',{});   // {"2026-09-28": 8234} — daily totals from Apple Health or typed in
 if(!steps||typeof steps!=='object'||Array.isArray(steps))steps={};
-let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,goalWater:2500,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
+let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,goalWater:2500,weightGoal:null,weightGoalSetAt:null,weightGoalStart:null,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
 let editingId=null,historyFilter='all',historyLimit=15,chartExercise=null,chartMetric='kg';
 const sessionOpen=new Map();   // workout key → open/closed the user picked; otherwise only the latest is open
 
@@ -41,6 +43,7 @@ function persist(){
     localStorage.setItem('wt_settings',JSON.stringify(settings));
     localStorage.setItem('wt_steps',JSON.stringify(steps));
     localStorage.setItem('wt_water',JSON.stringify(water));
+    localStorage.setItem('wt_weight',JSON.stringify(weights));
   }catch{toast('⚠️ Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος. Κάνε Export.')}
 }
 
@@ -590,7 +593,8 @@ function renderStats(){renderRings();renderSteps();renderTiles();renderChart();r
 
 /* ───── water: a bottle whose capacity is the daily goal and fills with every drink ───── */
 const fmtL=ml=>(ml/1000).toLocaleString('el-GR',{maximumFractionDigits:2});
-const waterToday=()=>(water[today()]||[]).reduce((a,x)=>a+x.ml,0);
+const dayWater=d=>(water[d]||[]).reduce((a,x)=>a+x.ml,0);
+const waterToday=()=>dayWater(today());
 const BOTTLE_TOP=58,BOTTLE_BOTTOM=212;   // inner fill range of the bottle body in the SVG
 function bottleSvg(){
   const body='M50 30H70V44C70 52 98 58 98 76V196Q98 212 82 212H38Q22 212 22 196V76C22 58 50 52 50 44Z';
@@ -634,7 +638,7 @@ function addWater(ml){
   ml=Math.round(Number(ml));if(!(ml>=10&&ml<=3000))return toast('Βάλε ποσότητα από 10 έως 3000 ml');
   const before=waterToday(),t=today();
   (water[t]||(water[t]=[])).push({t:Date.now(),ml});
-  persist();renderWater();
+  persist();renderWater();renderNutritionWeek();
   if(before<settings.goalWater&&waterToday()>=settings.goalWater){confetti();navigator.vibrate?.([40,60,120]);toast('💧 Έπιασες τον στόχο νερού για σήμερα!')}
   else toast(`💧 +${ml} ml`);
 }
@@ -644,9 +648,115 @@ $('#waterLog').onclick=e=>{
   const b=e.target.closest('[data-t]');if(!b)return;
   const t=today();water[t]=(water[t]||[]).filter(x=>String(x.t)!==b.dataset.t);
   if(!water[t].length)delete water[t];
-  persist();renderWater();
+  persist();renderWater();renderNutritionWeek();
 };
 $('#waterGoalBtn').onclick=()=>{openSettings();setTimeout(()=>$('#goalWater').focus(),50)};
+
+/* ───── weigh-ins: goal, progress, chart and a weekly log (weekly averages smooth out daily swings) ───── */
+const fmtKg=v=>v.toLocaleString('el-GR',{maximumFractionDigits:1});
+const parseKg=v=>{const n=parseFloat(String(v).replace(',','.'));return Number.isFinite(n)?Math.round(n*10)/10:NaN};
+const weightDays=()=>Object.keys(weights).sort();
+function latestWeight(before){
+  const ds=weightDays().filter(d=>!before||d<before);
+  return ds.length?{date:ds[ds.length-1],kg:weights[ds[ds.length-1]]}:null;
+}
+// weight at the moment the goal was set; if there was none yet, the first weigh-in after it
+function goalStart(){
+  if(settings.weightGoalStart!=null)return settings.weightGoalStart;
+  const ds=weightDays();if(!ds.length)return null;
+  const at=settings.weightGoalSetAt;
+  if(!at)return weights[ds[0]];
+  const after=ds.find(d=>d>=at);
+  return weights[after??ds[ds.length-1]];
+}
+function goalProgress(cur){
+  const g=settings.weightGoal,st=goalStart();
+  if(g==null||st==null||cur==null)return null;
+  const losing=g<st,reached=losing?cur<=g:cur>=g;
+  const pct=reached?1:st===g?0:Math.max(0,Math.min(1,(st-cur)/(st-g)));
+  return{pct,reached,losing,goal:g,start:st,changed:cur-st,left:Math.abs(cur-g)};
+}
+// closer to the goal = good (green), further = amber; no goal = neutral
+const towardCls=(cur,prev)=>settings.weightGoal==null||prev==null?'':Math.abs(cur-settings.weightGoal)<Math.abs(prev-settings.weightGoal)?'good':Math.abs(cur-settings.weightGoal)>Math.abs(prev-settings.weightGoal)?'bad':'';
+const deltaTxt=d=>Math.abs(d)<0.05?'= ίδιο':`${d<0?'▼':'▲'} ${fmtKg(Math.abs(d))} kg`;
+
+function weightChart(pts,goal){
+  const W=320,H=150,L=34,R=44,T=12,B=24,n=pts.length,vals=pts.map(p=>p.v).concat(goal==null?[]:[goal]);
+  let min=Math.min(...vals)-.5,max=Math.max(...vals)+.5;
+  const x=i=>L+(n===1?(W-L-R)/2:i*(W-L-R)/(n-1)),y=v=>T+(1-(v-min)/(max-min))*(H-T-B);
+  const line=pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`).join('');
+  const area=`${line}L${x(n-1).toFixed(1)} ${H-B}L${x(0).toFixed(1)} ${H-B}Z`;
+  const ticks=[min,(min+max)/2,max].map(v=>`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${L-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end">${fmtKg(v)}</text>`).join('');
+  const g=goal==null?'':`<line class="wGoal" x1="${L}" x2="${W-R}" y1="${y(goal).toFixed(1)}" y2="${y(goal).toFixed(1)}"/><text class="wGoalTxt" x="${W-R+4}" y="${(y(goal)+3).toFixed(1)}">🎯 ${fmtKg(goal)}</text>`;
+  const dots=pts.map((p,i)=>`<circle class="wPt${i===n-1?' last':''}" cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${i===n-1?5:3.5}"/>`).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Γράφημα βάρους"><defs><linearGradient id="wArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22a55f" stop-opacity=".25"/><stop offset="1" stop-color="#22a55f" stop-opacity="0"/></linearGradient></defs>${ticks}${g}<path d="${area}" fill="url(#wArea)"/><path class="wLine" d="${line}"/>${dots}<text x="${L}" y="${H-6}">${shortDate(pts[0].date)}</text>${n>1?`<text x="${W-R}" y="${H-6}" text-anchor="end">${shortDate(pts[n-1].date)}</text>`:''}</svg>`;
+}
+function renderWeight(){
+  const last=latestWeight(),g=settings.weightGoal;
+  $('#weightGoalBtn').textContent=g==null?'🎯 Στόχος':`🎯 ${fmtKg(g)} kg`;
+  $('#weightKg').placeholder=last?fmtKg(last.kg):'π.χ. 82,4';
+  if(!$('#weightDate').value||$('#weightDate').value>today())$('#weightDate').value=today();
+  $('#weightDate').max=today();
+  if(!last){
+    $('#weightNow').innerHTML='<span class="empty">Πέρασε το πρώτο σου ζύγισμα για να ξεκινήσει το log.</span>';
+    $('#weightProgress').innerHTML=g==null?'':`🎯 Στόχος: <b>${fmtKg(g)} kg</b>`;
+    $('#weightChart').innerHTML='';$('#weightLog').innerHTML='';return;
+  }
+  const prev=latestWeight(last.date);
+  $('#weightNow').innerHTML=`<b>${fmtKg(last.kg)}</b><span>kg</span>${prev?`<span class="wDelta ${towardCls(last.kg,prev.kg)}">${deltaTxt(last.kg-prev.kg)}</span>`:''}<small>${formatDate(last.date)}${prev?` · σε σχέση με ${formatDate(prev.date)}`:''}</small>`;
+  const p=goalProgress(last.kg);
+  $('#weightProgress').innerHTML=g==null?'Βάλε <b>🎯 στόχο κιλών</b> για να βλέπεις πόσο απέχεις.'
+    :p.reached?`🎉 <b>Έπιασες τον στόχο των ${fmtKg(g)} kg!</b><div class="wBar"><i style="width:100%"></i></div>`
+    :`${Math.abs(p.changed)<0.05?'Ίδιο βάρος με την αρχή':`${p.changed<0?'Έχασες':'Πήρες'} <b>${fmtKg(Math.abs(p.changed))} kg</b>`} από τα ${fmtKg(p.start)} · απομένουν <b>${fmtKg(p.left)} kg</b> για τα ${fmtKg(g)}<div class="wBar"><i style="width:${(p.pct*100).toFixed(1)}%"></i></div>`;
+  const since=addDays(today(),-89),pts=weightDays().filter(d=>d>=since).map(d=>({date:d,v:weights[d]}));
+  $('#weightChart').innerHTML=pts.length>1?weightChart(pts,g):'';
+  $('#weightLog').innerHTML=weightDays().slice(-6).reverse().map(d=>`<span class="waterChip wChip">${shortDate(d)} · ${fmtKg(weights[d])} kg<button type="button" class="remove" data-d="${d}" aria-label="Διαγραφή ζυγίσματος">✕</button></span>`).join('');
+}
+$('#weightForm').onsubmit=e=>{
+  e.preventDefault();
+  const d=$('#weightDate').value,kg=parseKg($('#weightKg').value);
+  if(!validDay(d)||d>today())return toast('Διάλεξε ημέρα μέχρι σήμερα');
+  if(!(kg>=25&&kg<=350))return toast('Γράψε τα κιλά σου, π.χ. 82,4');
+  const wasReached=goalProgress(latestWeight()?.kg)?.reached;
+  weights[d]=kg;persist();
+  $('#weightKg').value='';$('#weightKg').blur();$('#weightDate').value=today();
+  renderWeight();renderNutritionWeek();
+  if(!wasReached&&goalProgress(latestWeight().kg)?.reached){confetti();navigator.vibrate?.([40,60,120]);toast('🎯 Έπιασες τον στόχο βάρους!')}
+  else toast(`⚖️ ${fmtKg(kg)} kg · ${formatDate(d)}`);
+};
+$('#weightLog').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;delete weights[b.dataset.d];persist();renderWeight();renderNutritionWeek()};
+$('#weightGoalBtn').onclick=()=>{openSettings();setTimeout(()=>$('#goalWeight').focus(),50)};
+
+function renderNutritionWeek(){
+  const t=today(),ws=weekStart(t),g=settings.weightGoal,goalW=settings.goalWater;
+  const week=w=>{
+    const days=[...Array(7)].map((_,i)=>addDays(w,i)).filter(d=>d<=t),wd=days.filter(d=>d in weights);
+    return{w,days:days.length,water:days.filter(d=>dayWater(d)>=goalW).length,hasWater:days.some(d=>water[d]),weighIns:wd.length,avg:wd.length?wd.reduce((a,d)=>a+weights[d],0)/wd.length:null};
+  };
+  const cur=week(ws),last=latestWeight(),p=goalProgress(last?.kg);
+  $('#nutWeekRange').textContent=`${shortDate(ws)} – ${shortDate(addDays(ws,6))}`;
+  const items=[
+    {label:'Νερό: μέρες στόχου',v:cur.water,goal:7,txt:`${cur.water}<small> / 7</small>`,color:'#1f8f7f',r:60},
+    {label:'Ζυγίσματα',v:cur.weighIns,goal:3,txt:`${cur.weighIns}<small> / 3</small>`,color:'var(--coffee)',r:46},
+    {label:'Πρόοδος στόχου κιλών',v:p?p.pct:0,goal:1,txt:p?`${Math.round(p.pct*100)}<small>%</small>`:'—',color:'var(--brand)',r:32},
+  ];
+  const center=cur.avg!=null?fmtKg(cur.avg):last?fmtKg(last.kg):'—';
+  $('#nutRings').innerHTML=`<svg viewBox="0 0 140 140" role="img" aria-label="Εβδομάδα διατροφής">${items.map(i=>ringSvg(i.r,i.v/i.goal,i.color)).join('')}<text x="70" y="66" text-anchor="middle" font-size="17" font-weight="800" fill="currentColor" style="font-family:inherit">${center}</text><text x="70" y="84" text-anchor="middle" font-size="10" font-weight="700" fill="#6b776c" style="font-family:inherit">${cur.avg!=null?'kg μ.ό.':last?'kg':''}</text></svg>`;
+  $('#nutRingLegend').innerHTML=items.map(i=>`<li style="--c:${i.color}"><i></i><b>${i.txt}</b><span>${i.label}</span></li>`).join('');
+  // log: this week and up to 7 earlier weeks that have any data
+  const rows=[];
+  for(let i=0;i<12&&rows.length<8;i++){const r=week(addDays(ws,-7*i));if(i===0||r.avg!=null||r.hasWater)rows.push(r)}
+  rows.forEach((r,i)=>{const older=rows.slice(i+1).find(o=>o.avg!=null);r.delta=r.avg!=null&&older?r.avg-older.avg:null;r.olderAvg=older?.avg});
+  const notes=[],now=rows[0];
+  if(now.avg!=null&&now.delta!=null){
+    const cls=towardCls(now.avg,now.olderAvg);
+    notes.push(`Μ.Ο. εβδομάδας <b>${fmtKg(now.avg)} kg</b> · ${deltaTxt(now.delta)} από την προηγούμενη${cls==='good'?' — <b>πλησιάζεις τον στόχο</b> 👍':cls==='bad'?' — απομακρύνεσαι από τον στόχο':''}`);
+  }else if(!cur.weighIns)notes.push('Ζυγίσου 2–3 φορές την εβδομάδα, το πρωί μετά την τουαλέτα, για πιο σταθερό μέσο όρο.');
+  if(p&&!p.reached)notes.push(`🎯 Απομένουν <b>${fmtKg(p.left)} kg</b> για τα ${fmtKg(p.goal)} kg`);
+  $('#nutWeekNote').innerHTML=notes.map(x=>`<div>${x}</div>`).join('');
+  $('#nutWeeks').innerHTML=rows.map((r,i)=>`<div class="weekRow"><div class="wr1"><b>${i===0?'Αυτή η εβδομάδα':`${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}`}</b>${i===0?`<span>${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}</span>`:''}</div><div class="wr2">${r.avg!=null?`${fmtKg(r.avg)} kg`:'—'}${r.delta!=null?`<span class="wDelta ${towardCls(r.avg,r.olderAvg)}">${deltaTxt(r.delta)}</span>`:''}</div><div class="wr3">💧 ${r.water}/${r.days}</div></div>`).join('');
+}
+function renderNutrition(){renderWeight();renderWater();renderNutritionWeek()}
 
 /* ───── tabs ───── */
 function switchTab(t){
@@ -658,7 +768,7 @@ function switchTab(t){
   });
   if(t==='history')renderHistory();
   if(t==='stats')renderStats();
-  if(t==='nutrition')renderWater();
+  if(t==='nutrition')renderNutrition();
   window.scrollTo(0,0);
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
@@ -666,11 +776,11 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.t
 /* ───── settings & data ───── */
 const settingsDlg=$('#settingsDialog');
 async function openSettings(){
-  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;$('#goalWater').value=settings.goalWater;
+  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;$('#goalWater').value=settings.goalWater;$('#goalWeight').value=settings.weightGoal==null?'':fmtKg(settings.weightGoal);
   settingsDlg.showModal();
-  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
+  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water','wt_weight'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
-  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
+  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ${Object.keys(weights).length} ζυγίσματα · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
 }
 $('#settingsBtn').onclick=openSettings;
 $('#settingsClose').onclick=()=>{saveSettings();settingsDlg.close()};
@@ -679,7 +789,10 @@ function saveSettings(){
   settings.goalSets=clamp(Number($('#goalSets').value),5,300,60);
   settings.goalSteps=clamp(Number($('#goalSteps').value),1000,50000,8000);
   settings.goalWater=clamp(Number($('#goalWater').value),500,8000,2500);
-  if(!$('#view-nutrition').hidden)renderWater();
+  const gw=$('#goalWeight').value.trim(),kg=parseKg(gw);
+  if(gw===''){settings.weightGoal=null;settings.weightGoalSetAt=null;settings.weightGoalStart=null}
+  else if(kg>=25&&kg<=350&&kg!==settings.weightGoal){settings.weightGoal=kg;settings.weightGoalSetAt=today();settings.weightGoalStart=latestWeight()?.kg??null}   // progress is measured from your weight right now
+  if(!$('#view-nutrition').hidden)renderNutrition();
   persist();if(!$('#view-stats').hidden)renderStats();
 }
 settingsDlg.addEventListener('close',saveSettings);   // "Έτοιμο", Esc
@@ -692,10 +805,10 @@ function checkBackup(){
   $('#backupHint').classList.toggle('due',due);
   $('#backupHint').textContent=due
     ?`⚠️ ${settings.lastExport?'Πάνε πάνω από 30 μέρες από το τελευταίο backup.':'Δεν έχεις κάνει ακόμα backup.'} Τα δεδομένα μένουν μόνο σε αυτό το κινητό.`
-    :'Σώζει προπονήσεις, βήματα και νερό σε αρχείο (Αρχεία, iCloud, Drive).';
+    :'Σώζει προπονήσεις, βήματα, νερό και ζυγίσματα σε αρχείο (Αρχεία, iCloud, Drive).';
 }
 async function exportData(){
-  const json=JSON.stringify({version:4,exportedAt:new Date().toISOString(),exercises,logs,steps,water,settings},null,2);
+  const json=JSON.stringify({version:5,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,settings},null,2);
   const file=new File([json],`gympilot-backup-${today()}.json`,{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
@@ -729,17 +842,20 @@ $('#importFile').onchange=async e=>{
       if(list.length)newWater[k]=list;
     });
     const wn=Object.keys(newWater).length;
-    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}${wn?` και ${wn} μέρες νερού`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
-    logs.push(...fresh);Object.assign(steps,newSteps);Object.assign(water,newWater);
+    const newWeights={};
+    if(d.weights&&typeof d.weights==='object'&&!Array.isArray(d.weights))Object.entries(d.weights).forEach(([k,v])=>{const kg=parseKg(v);if(validDay(k)&&!(k in weights)&&kg>=25&&kg<=350)newWeights[k]=kg});
+    const kn=Object.keys(newWeights).length;
+    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}${wn?` και ${wn} μέρες νερού`:''}${kn?` και ${kn} ζυγίσματα`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
+    logs.push(...fresh);Object.assign(steps,newSteps);Object.assign(water,newWater);Object.assign(weights,newWeights);
     Object.entries(d.exercises||{}).forEach(([g,list])=>{if(Array.isArray(list))exercises[g]=[...new Set([...(exercises[g]||[]),...list.map(String)])]});
     fresh.forEach(l=>{const list=exercises[l.group]||(exercises[l.group]=[]);if(!list.includes(l.exercise))list.push(l.exercise)});
-    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}${wn?` · ${wn} μέρες νερού`:''}`);
+    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}${wn?` · ${wn} μέρες νερού`:''}${kn?` · ${kn} ζυγίσματα`:''}`);
   }catch{alert('Το αρχείο δεν φαίνεται να είναι σωστό backup.')}
 };
 
 $('#clearBtn').onclick=()=>{
-  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις, βήματα και νερό); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
-  logs=[];steps={};water={};persist();if(!$('#view-nutrition').hidden)renderWater();settingsDlg.close();resetForm();renderHistory();checkBackup();
+  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις, βήματα, νερό και ζυγίσματα); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
+  logs=[];steps={};water={};weights={};persist();if(!$('#view-nutrition').hidden)renderNutrition();settingsDlg.close();resetForm();renderHistory();checkBackup();
 };
 
 /* ───── init ───── */
@@ -748,7 +864,7 @@ document.addEventListener('visibilitychange',()=>{
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
-  if(!$('#view-nutrition').hidden)renderWater();   // new day = empty bottle
+  if(!$('#view-nutrition').hidden)renderNutrition();   // new day = empty bottle, new week = new rings
   if(!editingId&&!$('#view-log').hidden&&date.value<today()&&sets.querySelectorAll('input:not(:placeholder-shown)').length===0)date.value=today();
 });
 try{navigator.storage?.persist?.()?.catch(()=>{})}catch{}

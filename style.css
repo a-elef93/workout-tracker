@@ -385,6 +385,41 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .waterChip .remove{padding:6px 9px;font-size:11px;color:#17695e}
 .soonHero .soonList{margin-top:14px}
 
+/* ───── Weigh-ins ───── */
+.weightNow{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.weightNow b{font-size:34px;line-height:1;letter-spacing:-.02em}
+.weightNow>span:not(.wDelta){font-size:15px;font-weight:700;color:var(--muted)}
+.weightNow small{flex-basis:100%;font-size:12px;color:var(--muted);font-weight:600}
+.wDelta{display:inline-block;font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px;background:var(--raised);color:var(--muted);white-space:nowrap}
+.wDelta.good{background:var(--up-bg);color:var(--up-ink)}
+.wDelta.bad{background:var(--down-bg);color:var(--down-ink)}
+.wGoalBox{margin-top:12px;font-size:13px;font-weight:600;color:var(--muted);line-height:1.5}
+.wGoalBox:empty{display:none}
+.wGoalBox b{color:var(--text)}
+.wBar{height:10px;border-radius:5px;background:var(--raised);overflow:hidden;margin-top:6px}
+.wBar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--coffee),var(--brand));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.weightForm{margin-top:14px}
+.weightForm .row{margin-bottom:0}
+.weightChart{margin-top:14px}
+.weightChart:empty{display:none}
+.weightChart .wLine{fill:none;stroke:var(--brand);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.weightChart .wPt{fill:#fff;stroke:var(--brand);stroke-width:2.5}
+.weightChart .wPt.last{fill:var(--brand)}
+.weightChart .wGoal{stroke:var(--coffee);stroke-width:1.5;stroke-dasharray:5 4}
+.chartBox .wGoalTxt{fill:var(--coffee);font-weight:800}
+.wChip{background:var(--coffee-soft);color:var(--coffee-ink)}
+.wChip .remove{color:var(--coffee-ink)}
+
+/* ───── Weekly nutrition summary ───── */
+.nutWeek .stepsInsight:empty{display:none}
+.logTitle{margin:16px 0 8px;font-size:15px;color:var(--coffee-ink)}
+.weekLog{display:grid;gap:8px}
+.weekRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;background:var(--raised);border-radius:12px;padding:10px 12px;font-size:13px}
+.weekRow .wr1 b{display:block;font-size:14px;color:var(--text)}
+.weekRow .wr1 span{font-size:12px;color:var(--muted);font-weight:600}
+.weekRow .wr2{display:grid;justify-items:end;gap:4px;font-weight:800;color:var(--text)}
+.weekRow .wr3{font-weight:800;color:#17695e;white-space:nowrap}
+
 /* ───── Tab bar, timer, toast ───── */
 .tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:20;
@@ -513,5 +548,6 @@ dialog{max-height:90vh;overflow:auto}
   header,header>.headerLogo{transition:none}
   .wave{animation:none}
   .waterLevel{transition:none}
+  .wBar i{transition:none}
   .stepsBar i{transition:none}
 }
