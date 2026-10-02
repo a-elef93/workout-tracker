@@ -11,6 +11,7 @@ let steps=load('wt_steps',{});   // {"2026-09-28": 8234} — daily totals from A
 if(!steps||typeof steps!=='object'||Array.isArray(steps))steps={};
 let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
 let editingId=null,historyFilter='all',historyLimit=15,chartExercise=null,chartMetric='kg';
+const sessionOpen=new Map();   // workout key → open/closed the user picked; otherwise only the latest is open
 
 const $=s=>document.querySelector(s),group=$('#group'),exercise=$('#exercise'),sets=$('#sets'),date=$('#date');
 
@@ -316,8 +317,8 @@ function historyItemHtml(x,s){
   return`<div class="historyItem ${s.cls}"><div class="historyTop"><div><div class="historyTitle">${escapeHtml(x.exercise)}</div>${isWeighted(x)?`<div class="historyMeta">Όγκος ${fmt(volume(x))}kg</div>`:''}<span class="badge">${badgeText(s)}</span></div><div class="itemBtns"><button class="remove" data-act="edit" data-id="${id}" aria-label="Επεξεργασία">✎</button><button class="remove" data-act="del" data-id="${id}" aria-label="Διαγραφή">✕</button></div></div><div class="historySets">${x.sets.map((t,i)=>`<span class="pill${i===s.idx?' top':''}"><small>S${i+1}</small>${setText(t)}</span>`).join('')}</div>${x.notes?`<div class="historyNotes">📝 ${escapeHtml(x.notes)}</div>`:''}</div>`;
 }
 // one box per workout = same day + same muscle group, exercises in the order they were logged
-function sessionHtml(items,status){
-  const {date:d,group:g}=items[0];
+function sessionHtml(items,status,isLatest){
+  const {date:d,group:g}=items[0],key=d+'|'+g,open=sessionOpen.get(key)??isLatest;
   const sameYear=d.slice(0,4)===today().slice(0,4);
   const day=parseDay(d).toLocaleDateString('el-GR',{weekday:'long',day:'numeric',month:'long',...(sameYear?{}:{year:'numeric'})});
   const setsN=items.reduce((a,x)=>a+x.sets.length,0);
@@ -325,7 +326,7 @@ function sessionHtml(items,status){
   const recs=items.filter(x=>status.get(x.id).cls==='record').length;
   const meta=[`${items.length} ${items.length===1?'άσκηση':'ασκήσεις'}`,`${setsN} sets`];
   if(vol)meta.push(`Όγκος ${vol>=1000?`${fmt(vol/1000)}t`:`${fmt(vol)}kg`}`);
-  return`<section class="session" style="--c:${groupColor(g)}"><div class="sessionHead"><div><div class="sessionTitle"><i class="gdot"></i>${escapeHtml(g)}</div><div class="sessionDay">${day}</div><div class="sessionMeta">${meta.join(' · ')}</div></div>${recs?`<span class="sessionRec">🏆 ${recs}</span>`:''}</div><div class="sessionBody">${items.map(x=>historyItemHtml(x,status.get(x.id))).join('')}</div></section>`;
+  return`<section class="session${open?'':' closed'}" style="--c:${groupColor(g)}" data-key="${escapeHtml(key)}"><div class="sessionHead"><div><div class="sessionTitle"><i class="gdot"></i>${escapeHtml(g)}</div><div class="sessionDay">${day}</div><div class="sessionMeta">${meta.join(' · ')}</div></div><div class="sessionSide">${recs?`<span class="sessionRec">🏆 ${recs}</span>`:''}<button type="button" class="chev" aria-expanded="${open}" aria-label="${open?'Κλείσιμο':'Άνοιγμα'} προπόνησης"></button></div></div><div class="sessionBody"><div class="sessionInner">${items.map(x=>historyItemHtml(x,status.get(x.id))).join('')}</div></div></section>`;
 }
 function renderHistory(){
   renderFilters();
@@ -337,12 +338,19 @@ function renderHistory(){
   });
   const sessions=[...byKey.values()].map(a=>a.sort(byOldest)).sort((a,b)=>byNewest(a[a.length-1],b[b.length-1]));
   const shown=sessions.slice(0,historyLimit);
-  $('#history').innerHTML=shown.length?shown.map(a=>sessionHtml(a,status)).join(''):'<div class="empty">Καμία καταγραφή εδώ ακόμα.</div>';
+  $('#history').innerHTML=shown.length?shown.map((a,i)=>sessionHtml(a,status,i===0)).join(''):'<div class="empty">Καμία καταγραφή εδώ ακόμα.</div>';
   $('#moreBtn').hidden=sessions.length<=historyLimit;
 }
 $('#filters').onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;historyFilter=b.dataset.g;historyLimit=15;renderHistory()};
 $('#moreBtn').onclick=()=>{historyLimit+=15;renderHistory()};
+function toggleSession(sec){
+  const open=sec.classList.toggle('closed')===false,btn=sec.querySelector('.chev');
+  sessionOpen.set(sec.dataset.key,open);
+  btn.setAttribute('aria-expanded',open);btn.setAttribute('aria-label',`${open?'Κλείσιμο':'Άνοιγμα'} προπόνησης`);
+}
 $('#history').onclick=e=>{
+  const head=e.target.closest('.sessionHead');
+  if(head)return toggleSession(head.closest('.session'));
   const b=e.target.closest('[data-act]');if(!b)return;
   if(b.dataset.act==='edit')return startEdit(b.dataset.id);
   if(!confirm('Διαγραφή αυτής της καταγραφής;'))return;

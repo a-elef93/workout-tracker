@@ -233,7 +233,24 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .sessionDay::first-letter{text-transform:uppercase}
 .sessionMeta{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
 .sessionRec{flex:none;background:var(--record-bg);color:var(--record-ink);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800}
-.sessionBody{padding:0 12px 0 14px}
+.sessionHead{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .25s}
+.sessionSide{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+/* chevron under the trophy: points down when open, right when closed */
+.chev{
+  width:32px;height:32px;padding:0;border-radius:50%;flex:none;position:relative;
+  background:#ffffffcc;border:1.5px solid color-mix(in srgb,var(--c) 35%,#fff);box-shadow:none;
+}
+.chev::before{
+  content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;
+  border-right:2.5px solid var(--coffee);border-bottom:2.5px solid var(--coffee);
+  transform:translate(-50%,-70%) rotate(45deg);transition:transform .25s;
+}
+.session.closed .chev::before{transform:translate(-70%,-50%) rotate(-45deg)}
+.session.closed .sessionHead{border-bottom-color:transparent}
+/* smooth open/close without measuring heights */
+.sessionBody{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease}
+.session.closed .sessionBody{grid-template-rows:0fr}
+.sessionInner{overflow:hidden;min-height:0;padding:0 12px 0 14px}
 
 /* ───── Stats ───── */
 .ringsCard{background:linear-gradient(160deg,#fff,#f1f9f3)}
@@ -422,5 +439,6 @@ dialog{max-height:90vh;overflow:auto}
   .toast{transition:none}
   .setNum.pop{animation:none}
   .pulse{animation:none}
+  .sessionBody,.chev::before{transition:none}
   .stepsBar i{transition:none}
 }
