@@ -15,9 +15,10 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="onLog">
 <header>
-  <div>
+  <svg class="headerLogo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="34" stroke-linecap="round"><path d="M112 256h288"/><path d="M145 190v132M105 213v86M367 190v132M407 213v86"/></g></svg>
+  <div class="headerText">
     <h1>Workout Tracker</h1>
     <p>Progressive overload.</p>
   </div>
@@ -27,10 +28,6 @@
 <main>
   <!-- ───────── ΚΑΤΑΓΡΑΦΗ ───────── -->
   <section id="view-log" class="view">
-    <div id="backupBanner" class="banner" hidden>
-      <span>💾 Τα δεδομένα σου μένουν μόνο σε αυτό το κινητό. Κάνε ένα backup.</span>
-      <button id="bannerExport" class="secondary">Backup</button>
-    </div>
 
     <section class="card accent" id="logCard">
       <div class="row two">
@@ -182,7 +179,10 @@
 
 <dialog id="stepsDialog">
   <form method="dialog">
-    <h3>👣 Βήματα</h3>
+    <div class="dialogHead">
+      <h3>👣 Βήματα</h3>
+      <button type="button" id="stepsClose" class="closeX" aria-label="Κλείσιμο">✕</button>
+    </div>
 
     <div class="setGroup">
       <h4>Χειροκίνητα</h4>
@@ -225,7 +225,10 @@
 
 <dialog id="settingsDialog">
   <form method="dialog" id="settingsForm">
-    <h3>Ρυθμίσεις</h3>
+    <div class="dialogHead">
+      <h3>Ρυθμίσεις</h3>
+      <button type="button" id="settingsClose" class="closeX" aria-label="Κλείσιμο">✕</button>
+    </div>
 
     <div class="setGroup">
       <h4>Στόχοι</h4>
@@ -239,10 +242,9 @@
     <div class="setGroup">
       <h4>Δεδομένα</h4>
       <div id="storageInfo" class="storageInfo"></div>
-      <div class="dataBtns">
-        <button type="button" id="exportBtn" class="secondary">⬆ Export</button>
-        <button type="button" id="importBtn" class="secondary">⬇ Import</button>
-      </div>
+      <button type="button" id="exportBtn" class="wide backupBtn">💾 Backup ιστορικού</button>
+      <p id="backupHint" class="backupHint">Σώζει προπονήσεις και βήματα σε αρχείο (Αρχεία, iCloud, Drive).</p>
+      <button type="button" id="importBtn" class="secondary wide">⬇ Επαναφορά από backup</button>
       <input id="importFile" type="file" accept="application/json,.json" hidden>
       <button type="button" id="clearBtn" class="dangerGhost">Διαγραφή όλου του ιστορικού</button>
     </div>
