@@ -49,7 +49,7 @@ body.onLog h1{font-size:34px}
 /* big faint dumbbell logo inside the green */
 header>.headerLogo{
   position:absolute;z-index:0;right:-26px;bottom:-22px;width:210px;height:210px;
-  color:#fff;opacity:.17;transform:rotate(-28deg);transition:width .3s,height .3s,opacity .3s;
+  color:#fff;opacity:.17;transition:width .3s,height .3s,opacity .3s;
 }
 body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:-42px;opacity:.12}
 /* backup reminder lives on the gear now */
@@ -59,6 +59,8 @@ body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:
 }
 h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0}
 h2{color:var(--coffee-ink)}
+.brand{letter-spacing:-.03em}
+.brand span{font-weight:500;opacity:.92}
 header p{margin:4px 0 0;color:#ffffffe6;font-size:13px}
 .headerBtn{
   background:#ffffff2e;color:#fff;border:1px solid #ffffff40;border-radius:14px;
@@ -348,7 +350,33 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .soonList b{display:block;font-size:15px;color:var(--text)}
 .soonList div span{display:block;font-size:13px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.4}
 .tab{position:relative}
-.soonDot{position:absolute;top:6px;right:calc(50% - 20px);width:8px;height:8px;border-radius:50%;background:var(--coffee);box-shadow:0 0 0 2px #fff}
+
+/* ───── Water ───── */
+.waterWrap{display:flex;align-items:center;gap:14px}
+.bottle{flex:none;width:132px}
+.bottle svg{width:100%;height:auto;display:block;overflow:visible}
+.waterLevel{transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+.wave{animation:wave 3.2s linear infinite}
+.wave.w2{animation-duration:4.6s;animation-direction:reverse;opacity:.8}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-60px)}}
+.tickTxt{font-size:11px;font-weight:700;fill:var(--coffee);font-family:inherit}
+.tickTxt.goal{fill:var(--brand-2)}
+.waterInfo{flex:1;min-width:0;display:grid;gap:10px}
+.waterNum b{font-size:34px;line-height:1;letter-spacing:-.02em}
+.waterNum span{font-size:15px;color:var(--muted);font-weight:700}
+.waterPct{font-size:13px;color:var(--muted);font-weight:600}
+.waterPct b{color:#1f8f7f}
+.waterPct .goalOk{background:var(--up-bg);color:var(--up-ink);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800}
+.waterBtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.waterBtns button{padding:10px 4px;font-size:14px;color:#1f8f7f}
+.waterBtns button:active{background:#e3f6f1}
+.waterCustom{display:flex;gap:6px}
+.waterCustom input{padding:10px;font-size:15px;min-width:0}
+.waterCustom button{flex:none;padding:10px 12px;font-size:14px}
+.waterLog{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.waterChip{display:inline-flex;align-items:center;gap:2px;background:#e3f6f1;color:#17695e;border-radius:999px;padding:2px 2px 2px 12px;font-size:13px;font-weight:700}
+.waterChip .remove{padding:6px 9px;font-size:11px;color:#17695e}
+.soonHero .soonList{margin-top:14px}
 
 /* ───── Tab bar, timer, toast ───── */
 .tabbar{
@@ -415,7 +443,9 @@ dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing
 .backupHint.due{color:var(--down-ink);background:var(--down-bg);border-radius:10px;padding:8px 10px;margin:8px 0 2px}
 .setGroup{margin-bottom:18px}
 .setGroup .row{margin-bottom:0}
-.setGroup label{justify-content:space-between}   /* inputs line up even when a label wraps */
+.setGroup label{justify-content:space-between}
+.setGroup .row{flex-wrap:wrap}
+.setGroup .row label{flex:1 1 calc(50% - 10px)}   /* goals: 2×2 */   /* inputs line up even when a label wraps */
 .setGroup .dangerGhost{margin-top:16px}
 .storageInfo{font-size:13px;color:var(--muted);background:var(--raised);border-radius:12px;padding:10px 12px;margin-bottom:10px;line-height:1.5}
 
@@ -474,5 +504,7 @@ dialog{max-height:90vh;overflow:auto}
   .pulse{animation:none}
   .sessionBody,.chev::before{transition:none}
   header,header>.headerLogo{transition:none}
+  .wave{animation:none}
+  .waterLevel{transition:none}
   .stepsBar i{transition:none}
 }
