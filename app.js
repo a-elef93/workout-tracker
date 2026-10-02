@@ -861,6 +861,7 @@ $('#clearBtn').onclick=()=>{
 /* ───── init ───── */
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden)return;
+  swReg?.update().catch(()=>{});
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
@@ -868,5 +869,17 @@ document.addEventListener('visibilitychange',()=>{
   if(!editingId&&!$('#view-log').hidden&&date.value<today()&&sets.querySelectorAll('input:not(:placeholder-shown)').length===0)date.value=today();
 });
 try{navigator.storage?.persist?.()?.catch(()=>{})}catch{}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+/* updates: check for a new version on every open; when it takes over, reload — unless you're mid-entry */
+let swReg=null;
+const midEntry=()=>!!editingId||[...sets.querySelectorAll('input')].some(i=>i.value)||$('#notes').value.trim()||!!document.querySelector('dialog[open]')||!!$('#weightKg').value||!!$('#waterMl').value;
+if('serviceWorker'in navigator){
+  const hadController=!!navigator.serviceWorker.controller;   // first install shouldn't reload
+  navigator.serviceWorker.register('./sw.js').then(r=>{swReg=r}).catch(()=>{});
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!hadController||reloaded)return;
+    if(midEntry())return toast('✨ Νέα έκδοση — θα φορτωθεί στο επόμενο άνοιγμα');
+    reloaded=true;location.reload();
+  });
+}
 date.value=today();fillGroups();checkBackup();
