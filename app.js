@@ -7,9 +7,11 @@ function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));re
 let exercises=load('wt_exercises',null),logs=load('wt_logs',[]);
 if(!exercises||typeof exercises!=='object'||Array.isArray(exercises))exercises=defaults;
 if(!Array.isArray(logs))logs=[];
+let water=load('wt_water',{});   // {"2026-10-02":[{t:1759400000000,ml:250},…]} — each drink, so any one can be undone
+if(!water||typeof water!=='object'||Array.isArray(water))water={};
 let steps=load('wt_steps',{});   // {"2026-09-28": 8234} — daily totals from Apple Health or typed in
 if(!steps||typeof steps!=='object'||Array.isArray(steps))steps={};
-let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
+let settings={goalWorkouts:4,goalSets:60,goalSteps:8000,goalWater:2500,lastExport:0,stepsSyncedAt:0,stepsShortcut:false,stepsLastClip:0,...load('wt_settings',{})};
 let editingId=null,historyFilter='all',historyLimit=15,chartExercise=null,chartMetric='kg';
 const sessionOpen=new Map();   // workout key → open/closed the user picked; otherwise only the latest is open
 
@@ -38,6 +40,7 @@ function persist(){
     localStorage.setItem('wt_logs',JSON.stringify(logs));
     localStorage.setItem('wt_settings',JSON.stringify(settings));
     localStorage.setItem('wt_steps',JSON.stringify(steps));
+    localStorage.setItem('wt_water',JSON.stringify(water));
   }catch{toast('⚠️ Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος. Κάνε Export.')}
 }
 
@@ -585,6 +588,66 @@ $('#stepsImport').onclick=()=>{
 
 function renderStats(){renderRings();renderSteps();renderTiles();renderChart();renderDonut();renderRecords()}
 
+/* ───── water: a bottle whose capacity is the daily goal and fills with every drink ───── */
+const fmtL=ml=>(ml/1000).toLocaleString('el-GR',{maximumFractionDigits:2});
+const waterToday=()=>(water[today()]||[]).reduce((a,x)=>a+x.ml,0);
+const BOTTLE_TOP=58,BOTTLE_BOTTOM=212;   // inner fill range of the bottle body in the SVG
+function bottleSvg(){
+  const body='M50 30H70V44C70 52 98 58 98 76V196Q98 212 82 212H38Q22 212 22 196V76C22 58 50 52 50 44Z';
+  return`<svg viewBox="0 0 150 222" role="img" aria-label="Μπουκάλι νερού">
+  <defs><clipPath id="bottleClip"><path d="${body}"/></clipPath>
+  <linearGradient id="waterG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fd6bd"/><stop offset="1" stop-color="#1f8f7f"/></linearGradient></defs>
+  <path d="${body}" fill="#eef7f3"/>
+  <g clip-path="url(#bottleClip)"><g id="waterLevel" class="waterLevel" style="transform:translateY(${BOTTLE_BOTTOM}px)">
+    <path class="wave w2" d="M0 6Q15 0 30 6T60 6T90 6T120 6T150 6T180 6T210 6T240 6V240H0Z" fill="#9fe3d2"/>
+    <path class="wave w1" d="M0 8Q15 2 30 8T60 8T90 8T120 8T150 8T180 8T210 8T240 8V240H0Z" fill="url(#waterG)"/>
+  </g></g>
+  <g id="bottleTicks"></g>
+  <rect x="29" y="84" width="6" height="96" rx="3" fill="#fff" opacity=".45"/>
+  <path d="${body}" fill="none" stroke="#bfd9cc" stroke-width="3"/>
+  <rect x="46" y="8" width="28" height="24" rx="6" fill="#7b5236"/><rect x="46" y="26" width="28" height="4" fill="#5c3b24"/>
+  </svg>`;
+}
+function renderWater(){
+  const box=$('#bottle'),goal=settings.goalWater,total=waterToday(),pct=total/goal;
+  if(!box.firstChild)box.innerHTML=bottleSvg();
+  const y=BOTTLE_BOTTOM-Math.min(1,pct)*(BOTTLE_BOTTOM-BOTTLE_TOP);
+  $('#waterLevel').style.transform=`translateY(${y.toFixed(1)}px)`;
+  // a tick every 500 ml of the goal, labelled at whole litres
+  let ticks='';
+  for(let ml=500;ml<goal;ml+=500){
+    const ty=BOTTLE_BOTTOM-(ml/goal)*(BOTTLE_BOTTOM-BOTTLE_TOP),whole=ml%1000===0;
+    ticks+=`<line x1="${whole?84:88}" x2="98" y1="${ty.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="#7b5236" stroke-width="2" opacity=".55"/>`+(whole?`<text x="104" y="${(ty+4).toFixed(1)}" class="tickTxt">${ml/1000} L</text>`:'');
+  }
+  ticks+=`<text x="104" y="${BOTTLE_TOP+4}" class="tickTxt goal">${fmtL(goal)} L</text>`;
+  $('#bottleTicks').innerHTML=ticks;
+  $('#waterNow').textContent=fmtL(total);
+  $('#waterGoalTxt').textContent=` / ${fmtL(goal)} L`;
+  $('#waterGoalBtn').textContent=`Στόχος ${fmtL(goal)} L`;
+  const left=goal-total;
+  $('#waterPct').innerHTML=left>0?`<b>${Math.round(pct*100)}%</b> · λείπουν ${fmtL(left)} L`:`<span class="goalOk">✓ Στόχος</span>${left<0?` +${fmtL(-left)} L`:''}`;
+  $('#waterPct').classList.toggle('met',left<=0);
+  const list=(water[today()]||[]).slice().reverse();
+  $('#waterLog').innerHTML=list.length?list.map(x=>`<span class="waterChip">${new Date(x.t).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',hour12:false})} · ${x.ml} ml<button type="button" class="remove" data-t="${x.t}" aria-label="Αφαίρεση">✕</button></span>`).join(''):'<span class="empty">Πάτα ένα κουμπί κάθε φορά που πίνεις νερό.</span>';
+}
+function addWater(ml){
+  ml=Math.round(Number(ml));if(!(ml>=10&&ml<=3000))return toast('Βάλε ποσότητα από 10 έως 3000 ml');
+  const before=waterToday(),t=today();
+  (water[t]||(water[t]=[])).push({t:Date.now(),ml});
+  persist();renderWater();
+  if(before<settings.goalWater&&waterToday()>=settings.goalWater){confetti();navigator.vibrate?.([40,60,120]);toast('💧 Έπιασες τον στόχο νερού για σήμερα!')}
+  else toast(`💧 +${ml} ml`);
+}
+document.querySelectorAll('.waterAdd').forEach(b=>b.onclick=()=>addWater(b.dataset.ml));
+$('#waterForm').onsubmit=e=>{e.preventDefault();const v=$('#waterMl').value;if(!v)return;addWater(v);$('#waterMl').value='';$('#waterMl').blur()};
+$('#waterLog').onclick=e=>{
+  const b=e.target.closest('[data-t]');if(!b)return;
+  const t=today();water[t]=(water[t]||[]).filter(x=>String(x.t)!==b.dataset.t);
+  if(!water[t].length)delete water[t];
+  persist();renderWater();
+};
+$('#waterGoalBtn').onclick=()=>{openSettings();setTimeout(()=>$('#goalWater').focus(),50)};
+
 /* ───── tabs ───── */
 function switchTab(t){
   document.body.classList.toggle('onLog',t==='log');   // the tall header banner is only on the log screen
@@ -595,6 +658,7 @@ function switchTab(t){
   });
   if(t==='history')renderHistory();
   if(t==='stats')renderStats();
+  if(t==='nutrition')renderWater();
   window.scrollTo(0,0);
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
@@ -602,11 +666,11 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.t
 /* ───── settings & data ───── */
 const settingsDlg=$('#settingsDialog');
 async function openSettings(){
-  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;
+  $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;$('#goalWater').value=settings.goalWater;
   settingsDlg.showModal();
-  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
+  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
-  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
+  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
 }
 $('#settingsBtn').onclick=openSettings;
 $('#settingsClose').onclick=()=>{saveSettings();settingsDlg.close()};
@@ -614,6 +678,8 @@ function saveSettings(){
   settings.goalWorkouts=clamp(Number($('#goalWorkouts').value),1,7,4);
   settings.goalSets=clamp(Number($('#goalSets').value),5,300,60);
   settings.goalSteps=clamp(Number($('#goalSteps').value),1000,50000,8000);
+  settings.goalWater=clamp(Number($('#goalWater').value),500,8000,2500);
+  if(!$('#view-nutrition').hidden)renderWater();
   persist();if(!$('#view-stats').hidden)renderStats();
 }
 settingsDlg.addEventListener('close',saveSettings);   // "Έτοιμο", Esc
@@ -626,13 +692,13 @@ function checkBackup(){
   $('#backupHint').classList.toggle('due',due);
   $('#backupHint').textContent=due
     ?`⚠️ ${settings.lastExport?'Πάνε πάνω από 30 μέρες από το τελευταίο backup.':'Δεν έχεις κάνει ακόμα backup.'} Τα δεδομένα μένουν μόνο σε αυτό το κινητό.`
-    :'Σώζει προπονήσεις και βήματα σε αρχείο (Αρχεία, iCloud, Drive).';
+    :'Σώζει προπονήσεις, βήματα και νερό σε αρχείο (Αρχεία, iCloud, Drive).';
 }
 async function exportData(){
-  const json=JSON.stringify({version:3,exportedAt:new Date().toISOString(),exercises,logs,steps,settings},null,2);
-  const file=new File([json],`workout-backup-${today()}.json`,{type:'application/json'});
+  const json=JSON.stringify({version:4,exportedAt:new Date().toISOString(),exercises,logs,steps,water,settings},null,2);
+  const file=new File([json],`gympilot-backup-${today()}.json`,{type:'application/json'});
   try{
-    if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Workout backup'});
+    if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
     else{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;a.click();URL.revokeObjectURL(a.href)}
     settings.lastExport=Date.now();persist();checkBackup();toast('✅ Το backup είναι έτοιμο');
   }catch(e){if(e.name!=='AbortError')toast('⚠️ Το backup απέτυχε')}
@@ -656,17 +722,24 @@ $('#importFile').onchange=async e=>{
     const newSteps={};
     if(d.steps&&typeof d.steps==='object'&&!Array.isArray(d.steps))Object.entries(d.steps).forEach(([k,v])=>{const n=Math.round(Number(v));if(validDay(k)&&!(k in steps)&&n>=0&&n<=200000)newSteps[k]=n});
     const sn=Object.keys(newSteps).length;
-    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
-    logs.push(...fresh);Object.assign(steps,newSteps);
+    const newWater={};
+    if(d.water&&typeof d.water==='object'&&!Array.isArray(d.water))Object.entries(d.water).forEach(([k,v])=>{
+      if(!validDay(k)||k in water||!Array.isArray(v))return;
+      const list=v.map(x=>({t:Number(x?.t)||0,ml:Math.round(Number(x?.ml))})).filter(x=>x.ml>=10&&x.ml<=3000);
+      if(list.length)newWater[k]=list;
+    });
+    const wn=Object.keys(newWater).length;
+    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}${wn?` και ${wn} μέρες νερού`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
+    logs.push(...fresh);Object.assign(steps,newSteps);Object.assign(water,newWater);
     Object.entries(d.exercises||{}).forEach(([g,list])=>{if(Array.isArray(list))exercises[g]=[...new Set([...(exercises[g]||[]),...list.map(String)])]});
     fresh.forEach(l=>{const list=exercises[l.group]||(exercises[l.group]=[]);if(!list.includes(l.exercise))list.push(l.exercise)});
-    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}`);
+    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}${wn?` · ${wn} μέρες νερού`:''}`);
   }catch{alert('Το αρχείο δεν φαίνεται να είναι σωστό backup.')}
 };
 
 $('#clearBtn').onclick=()=>{
-  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις και βήματα); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
-  logs=[];steps={};persist();settingsDlg.close();resetForm();renderHistory();checkBackup();
+  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις, βήματα και νερό); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
+  logs=[];steps={};water={};persist();if(!$('#view-nutrition').hidden)renderWater();settingsDlg.close();resetForm();renderHistory();checkBackup();
 };
 
 /* ───── init ───── */
@@ -675,6 +748,7 @@ document.addEventListener('visibilitychange',()=>{
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
+  if(!$('#view-nutrition').hidden)renderWater();   // new day = empty bottle
   if(!editingId&&!$('#view-log').hidden&&date.value<today()&&sets.querySelectorAll('input:not(:placeholder-shown)').length===0)date.value=today();
 });
 try{navigator.storage?.persist?.()?.catch(()=>{})}catch{}

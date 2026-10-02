@@ -7,9 +7,9 @@
 <meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Workout">
+<meta name="apple-mobile-web-app-title" content="GymPilot">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>My Workout Tracker</title>
+<title>GymPilot</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -17,9 +17,9 @@
 </head>
 <body class="onLog">
 <header>
-  <svg class="headerLogo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="34" stroke-linecap="round"><path d="M112 256h288"/><path d="M145 190v132M105 213v86M367 190v132M407 213v86"/></g></svg>
+  <svg class="headerLogo" viewBox="0 0 512 512" aria-hidden="true"><circle cx="256" cy="256" r="150" fill="none" stroke="currentColor" stroke-width="30"/><path d="M335 177 181 243 241 271 269 331Z" fill="currentColor"/></svg>
   <div class="headerText">
-    <h1>Workout Tracker</h1>
+    <h1 class="brand">Gym<span>Pilot</span></h1>
     <p>Lift. Push. Progress.</p>
   </div>
   <button id="settingsBtn" class="headerBtn" aria-label="Ρυθμίσεις">⚙️</button>
@@ -149,20 +149,43 @@
       <div id="prList" class="prList"></div>
     </section>
   </section>
-  <!-- ───────── ΔΙΑΤΡΟΦΗ (coming soon) ───────── -->
+  <!-- ───────── ΔΙΑΤΡΟΦΗ ───────── -->
   <section id="view-nutrition" class="view" hidden>
+    <section class="card waterCard">
+      <div class="sectionTitle">
+        <h2>💧 Νερό σήμερα</h2>
+        <button id="waterGoalBtn" class="secondary small" type="button">Στόχος</button>
+      </div>
+      <div class="waterWrap">
+        <div id="bottle" class="bottle"></div>
+        <div class="waterInfo">
+          <div class="waterNum"><b id="waterNow">0</b><span id="waterGoalTxt"></span></div>
+          <div id="waterPct" class="waterPct"></div>
+          <div class="waterBtns">
+            <button type="button" class="secondary waterAdd" data-ml="250">+250 ml</button>
+            <button type="button" class="secondary waterAdd" data-ml="330">+330 ml</button>
+            <button type="button" class="secondary waterAdd" data-ml="500">+500 ml</button>
+            <button type="button" class="secondary waterAdd" data-ml="750">+750 ml</button>
+          </div>
+          <form id="waterForm" class="waterCustom">
+            <input id="waterMl" type="number" inputmode="numeric" min="10" max="3000" step="10" placeholder="ml" aria-label="Ποσότητα νερού σε ml">
+            <button type="submit">Πρόσθεσε</button>
+          </form>
+        </div>
+      </div>
+      <div id="waterLog" class="waterLog"></div>
+    </section>
+
     <section class="card soonHero">
       <span class="soonBadge">Coming soon</span>
-      <h2>🥗 Διατροφή</h2>
-      <p>Σύντομα θα συνδέεις εδώ το πρόγραμμα διατροφής σου, ώστε προπόνηση, βήματα και φαγητό να είναι όλα σε ένα σημείο.</p>
-    </section>
-    <section class="card">
-      <div class="sectionTitle"><h2>Τι έρχεται</h2></div>
+      <h2>🥗 Το πρόγραμμα διατροφής σου</h2>
+      <p>Σύνδεσε το πρόγραμμα του διατροφολόγου σου, ώστε προπόνηση, βήματα και διατροφή να είναι όλα σε ένα σημείο.</p>
       <ul class="soonList">
-        <li><span class="soonIcon">🍎</span><div><b>Θερμίδες &amp; πρωτεΐνη από Apple Health</b><span>Από MyFitnessPal, Cronometer, Yazio κ.ά., με τον ίδιο συγχρονισμό που έχουν τα βήματα.</span></div></li>
-        <li><span class="soonIcon">📄</span><div><b>Το πρόγραμμα του διατροφολόγου σου</b><span>Ανέβασε το PDF ή μια φωτογραφία και τσέκαρε τα γεύματα της ημέρας.</span></div></li>
-        <li><span class="soonIcon">🎯</span><div><b>Στόχος πρωτεΐνης</b><span>Από το βάρος σου, με διαφορετικό στόχο σε μέρες προπόνησης και ξεκούρασης.</span></div></li>
-        <li><span class="soonIcon">⚖️</span><div><b>Σωματικό βάρος</b><span>Καταγραφή και γράφημα δίπλα στη δύναμη και τα βήματα.</span></div></li>
+        <li><span class="soonIcon">📄</span><div><b>Πρόγραμμα διατροφολόγου</b><span>Ανέβασε το PDF ή μια φωτογραφία του προγράμματος, με τους στόχους του.</span></div></li>
+        <li><span class="soonIcon">✅</span><div><b>Γεύματα της ημέρας</b><span>Τσέκαρε κάθε γεύμα όταν το τρως.</span></div></li>
+        <li><span class="soonIcon">🔥</span><div><b>Θερμίδες &amp; πρωτεΐνη</b><span>Tracking σε σχέση με τον στόχο του προγράμματός σου.</span></div></li>
+        <li><span class="soonIcon">⚖️</span><div><b>Ζύγισμα</b><span>Log βάρους με γράφημα πορείας.</span></div></li>
+        <li><span class="soonIcon">📊</span><div><b>Εβδομαδιαία σύνοψη</b><span>Δαχτυλίδια και γραφήματα, όπως στις προπονήσεις.</span></div></li>
       </ul>
     </section>
   </section>
@@ -172,7 +195,7 @@
   <button class="tab active" data-tab="log" aria-current="page"><span class="ti">🏋️</span>Καταγραφή</button>
   <button class="tab" data-tab="history"><span class="ti">📒</span>Ιστορικό</button>
   <button class="tab" data-tab="stats"><span class="ti">📊</span>Στατιστικά</button>
-  <button class="tab" data-tab="nutrition"><span class="ti">🥗</span>Διατροφή<i class="soonDot" aria-label="Σύντομα"></i></button>
+  <button class="tab" data-tab="nutrition"><span class="ti">🥗</span>Διατροφή</button>
 </nav>
 
 <div id="timerPill" class="timerPill" hidden>
@@ -254,6 +277,7 @@
         <label>Προπονήσεις / εβδ.<input id="goalWorkouts" type="number" inputmode="numeric" min="1" max="7"></label>
         <label>Sets / εβδ.<input id="goalSets" type="number" inputmode="numeric" min="5" max="300"></label>
         <label>Βήματα / μέρα<input id="goalSteps" type="number" inputmode="numeric" min="1000" max="50000" step="500"></label>
+        <label>Νερό / μέρα (ml)<input id="goalWater" type="number" inputmode="numeric" min="500" max="8000" step="250"></label>
       </div>
     </div>
 
