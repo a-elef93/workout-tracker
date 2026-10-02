@@ -481,6 +481,7 @@ dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing
   background:var(--raised);color:var(--muted);border:1.5px solid var(--line);box-shadow:none;
 }
 .backupBtn{padding:14px;font-size:15px;margin-top:0}
+.appVersion{margin:12px 0 0;text-align:center;font-size:12px;font-weight:700;color:var(--muted)}
 .backupHint{font-size:12px;color:var(--muted);font-weight:600;margin:8px 2px 2px;line-height:1.4}
 .backupHint.due{color:var(--down-ink);background:var(--down-bg);border-radius:10px;padding:8px 10px;margin:8px 0 2px}
 .setGroup{margin-bottom:18px}
