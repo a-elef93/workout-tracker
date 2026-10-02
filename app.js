@@ -566,6 +566,7 @@ function openStepsDialog(showHelp){
   $('#stepsHowto').open=!!showHelp;stepsDlg.showModal();
 }
 $('#stepsSyncBtn').onclick=syncSteps;
+$('#stepsClose').onclick=()=>stepsDlg.close();
 $('#stepsEditBtn').onclick=()=>openStepsDialog(false);
 $('#stepsBody').onclick=e=>{if(e.target.closest('[data-steps-setup]'))openStepsDialog(true)};
 $('#stepsDate').onchange=()=>{$('#stepsValue').value=steps[$('#stepsDate').value]??''};
@@ -586,6 +587,7 @@ function renderStats(){renderRings();renderSteps();renderTiles();renderChart();r
 
 /* ───── tabs ───── */
 function switchTab(t){
+  document.body.classList.toggle('onLog',t==='log');   // the tall header banner is only on the log screen
   ['log','history','stats'].forEach(v=>$('#view-'+v).hidden=v!==t);
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===t;b.classList.toggle('active',on);
@@ -604,19 +606,27 @@ async function openSettings(){
   settingsDlg.showModal();
   const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
-  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε Export πού και πού.'}`;
+  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
 }
 $('#settingsBtn').onclick=openSettings;
-settingsDlg.addEventListener('close',()=>{
+$('#settingsClose').onclick=()=>{saveSettings();settingsDlg.close()};
+function saveSettings(){
   settings.goalWorkouts=clamp(Number($('#goalWorkouts').value),1,7,4);
   settings.goalSets=clamp(Number($('#goalSets').value),5,300,60);
   settings.goalSteps=clamp(Number($('#goalSteps').value),1000,50000,8000);
   persist();if(!$('#view-stats').hidden)renderStats();
-});
+}
+settingsDlg.addEventListener('close',saveSettings);   // "Έτοιμο", Esc
 
+// no banner on the main screen any more: a dot on the gear + a note in settings
+const backupDue=()=>logs.length>=5&&(Date.now()-(settings.lastExport||0))/864e5>30;
 function checkBackup(){
-  const days=(Date.now()-(settings.lastExport||0))/864e5;
-  $('#backupBanner').hidden=!(logs.length>=5&&days>30);
+  const due=backupDue();
+  $('#settingsBtn').classList.toggle('needsBackup',due);
+  $('#backupHint').classList.toggle('due',due);
+  $('#backupHint').textContent=due
+    ?`⚠️ ${settings.lastExport?'Πάνε πάνω από 30 μέρες από το τελευταίο backup.':'Δεν έχεις κάνει ακόμα backup.'} Τα δεδομένα μένουν μόνο σε αυτό το κινητό.`
+    :'Σώζει προπονήσεις και βήματα σε αρχείο (Αρχεία, iCloud, Drive).';
 }
 async function exportData(){
   const json=JSON.stringify({version:3,exportedAt:new Date().toISOString(),exercises,logs,steps,settings},null,2);
@@ -628,7 +638,6 @@ async function exportData(){
   }catch(e){if(e.name!=='AbortError')toast('⚠️ Το backup απέτυχε')}
 }
 $('#exportBtn').onclick=exportData;
-$('#bannerExport').onclick=exportData;
 
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{

@@ -41,6 +41,22 @@ header::after{
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 72 C30 50 50 48 75 62 S120 30 150 38 S200 70 230 52 S280 18 310 34 S370 60 400 44 L400 100 L0 100Z' fill='white'/%3E%3C/svg%3E") bottom/100% 100% no-repeat;
 }
 header>*{position:relative;z-index:1}
+header{min-height:calc(108px + env(safe-area-inset-top));transition:min-height .3s ease}
+/* log screen: taller hero banner (takes the space the backup banner used to) */
+body.onLog header{min-height:calc(196px + env(safe-area-inset-top));align-items:flex-end;padding-bottom:42px}
+body.onLog header .headerBtn{align-self:flex-start}
+body.onLog h1{font-size:34px}
+/* big faint dumbbell logo inside the green */
+header>.headerLogo{
+  position:absolute;z-index:0;right:-26px;bottom:-22px;width:210px;height:210px;
+  color:#fff;opacity:.17;transform:rotate(-28deg);transition:width .3s,height .3s,opacity .3s;
+}
+body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:-42px;opacity:.12}
+/* backup reminder lives on the gear now */
+.headerBtn.needsBackup::after{
+  content:"";position:absolute;top:7px;right:7px;width:11px;height:11px;border-radius:50%;
+  background:#f59e0b;box-shadow:0 0 0 2px #fff;
+}
 h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0}
 h2{color:var(--coffee-ink)}
 header p{margin:4px 0 0;color:#ffffffe6;font-size:13px}
@@ -88,12 +104,6 @@ button:active{transform:scale(.97)}
 .hint{margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--coffee-soft);color:var(--coffee-ink);font-weight:600;font-size:13px}
 .last .small{margin-top:10px}
 
-.banner{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  background:var(--down-bg);color:var(--down-ink);font-size:13px;font-weight:600;
-  border-radius:16px;padding:12px 14px;margin-bottom:14px;
-}
-.banner button{flex:none;padding:8px 14px}
 
 .sectionTitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
 .sectionTitle h2{margin:0;font-size:18px;letter-spacing:-.01em}
@@ -381,9 +391,19 @@ dialog::backdrop{background:#1f2a2299}
 dialog h3{margin:0 0 14px;font-size:20px}
 dialog h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .dialogBtns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.dialogHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.dialogHead h3{margin:0}
+.closeX{
+  flex:none;width:36px;height:36px;padding:0;border-radius:50%;font-size:15px;line-height:1;
+  background:var(--raised);color:var(--muted);border:1.5px solid var(--line);box-shadow:none;
+}
+.backupBtn{padding:14px;font-size:15px;margin-top:0}
+.backupHint{font-size:12px;color:var(--muted);font-weight:600;margin:8px 2px 2px;line-height:1.4}
+.backupHint.due{color:var(--down-ink);background:var(--down-bg);border-radius:10px;padding:8px 10px;margin:8px 0 2px}
 .setGroup{margin-bottom:18px}
 .setGroup .row{margin-bottom:0}
-.dataBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.setGroup label{justify-content:space-between}   /* inputs line up even when a label wraps */
+.setGroup .dangerGhost{margin-top:16px}
 .storageInfo{font-size:13px;color:var(--muted);background:var(--raised);border-radius:12px;padding:10px 12px;margin-bottom:10px;line-height:1.5}
 
 /* ───── Steps ───── */
@@ -440,5 +460,6 @@ dialog{max-height:90vh;overflow:auto}
   .setNum.pop{animation:none}
   .pulse{animation:none}
   .sessionBody,.chev::before{transition:none}
+  header,header>.headerLogo{transition:none}
   .stepsBar i{transition:none}
 }
