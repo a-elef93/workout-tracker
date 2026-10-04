@@ -408,6 +408,54 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .fileBtns>*{padding:10px 6px;font-size:13px;text-align:center}
 .btnLink{display:block;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;font-weight:700;text-decoration:none}
 
+/* ───── Recovery map ───── */
+.readyHint{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-2px 0 12px;font-size:12px;font-weight:800;color:var(--up-ink)}
+.readyHint .chip{padding:5px 11px;font-size:12px}
+.recoveryMap svg{width:100%;max-width:290px;height:auto;display:block;margin:0 auto}
+.recoveryMap .bodyLbl{font-size:10px;font-weight:800;fill:var(--muted);font-family:inherit}
+.recLegend{justify-content:center;margin:6px 0 10px}
+.recoveryList{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.recRow{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;background:var(--raised);border-radius:12px;padding:8px 10px}
+.recRow i{grid-row:span 2;width:10px;height:10px;border-radius:50%}
+.recRow b{font-size:13px}
+.recRow span{font-size:11px;color:var(--muted);font-weight:600}
+
+/* ───── Year heatmap ───── */
+.yearScroll{overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.yearScroll::-webkit-scrollbar{display:none}
+.yearScroll svg{display:block}
+.yrTxt{font-size:10px;font-weight:700;fill:var(--muted);font-family:inherit}
+.yl0{fill:#e8eee6}.yl1{fill:#bfe8cf}.yl2{fill:#7fd3a2}.yl3{fill:#34b16e}.yl4{fill:#15844a}
+.yearLegend{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:8px;font-size:11px;color:var(--muted);font-weight:600}
+.yearLegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.yearLegend i.yl0{background:#e8eee6}.yearLegend i.yl1{background:#bfe8cf}.yearLegend i.yl2{background:#7fd3a2}.yearLegend i.yl3{background:#34b16e}.yearLegend i.yl4{background:#15844a}
+
+/* ───── Monthly Wrapped ───── */
+.wrappedBody{margin-top:4px;border-radius:18px;padding:16px;color:#fff;
+  background:radial-gradient(420px 220px at 90% 0%,#22a55f55,transparent 70%),linear-gradient(160deg,#24180f,#3a2719 60%,#14301f)}
+.wrappedBody .empty{color:#e9e0d6}
+.wrapHead{display:grid;margin-bottom:10px}
+.wrapHead span{font-size:12px;font-weight:800;letter-spacing:.08em;color:#4cd88a;text-transform:uppercase}
+.wrapHead b{font-size:24px;letter-spacing:-.02em}
+.wrapItem{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #ffffff1a}
+.wrapIcon{font-size:24px;line-height:1.2}
+.wrapItem div{display:grid;min-width:0}
+.wrapItem small{font-size:11px;font-weight:800;letter-spacing:.05em;color:#d8cdbf;text-transform:uppercase}
+.wrapItem b{font-size:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrapItem span{font-size:12px;font-weight:600;color:#4cd88a}
+
+/* ───── Achievements ───── */
+.badgeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ach{display:grid;justify-items:center;text-align:center;gap:2px;background:var(--raised);border-radius:14px;padding:10px 6px;min-width:0}
+.ach .bIcon{font-size:28px;filter:grayscale(1);opacity:.45}
+.ach b{font-size:12px;line-height:1.2}
+.ach small{font-size:10px;color:var(--muted);font-weight:600;line-height:1.25}
+.ach.got{background:linear-gradient(160deg,#fff,var(--coffee-soft));box-shadow:inset 0 0 0 1.5px #e6d3bf}
+.ach.got .bIcon{filter:none;opacity:1}
+.bBar{width:80%;height:5px;border-radius:3px;background:#dfe7dc;overflow:hidden;margin-top:4px}
+.bBar i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.ach .bProg{font-weight:800;color:var(--brand-2)}
+
 /* ───── Weekly report (Stats) ───── */
 .reportRange{margin:-2px 0 10px}
 .reportGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}

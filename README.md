@@ -29,6 +29,10 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 - Each exercise is badged as record / up / down / same against the previous session, with a filter by muscle group.
 
 ### 📊 Stats
+- **Muscle recovery map**: a front and back body silhouette colours each muscle group by how rested it is since you last trained it (bigger sessions need longer). The Log screen suggests the groups that are ready today, and one tap picks one.
+- **Your year**: a 52-week heatmap of sets per day (tap a day to see what you did), plus your best weekly streak and most common training day.
+- **Monthly Wrapped**: your favourite exercise, biggest record, heaviest set, tonnes lifted (as many cars, elephants or buses), water and steps for the month. It shows up on the first open of a new month and can be shared as a story-sized image.
+- **Achievements**: 20 badges (Club 100, 10 tonnes, 12-week streak, early bird, 30 water days and more) with progress bars. They're worked out from your data, so nothing is lost if you restore a backup.
 - Weekly rings for workouts, sets and muscle groups, plus a week strip.
 - Tiles: weekly streak, total workouts, total volume, records.
 - Progress chart per exercise: top set, estimated 1RM (Epley) or volume.

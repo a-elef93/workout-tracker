@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- Muscle recovery map in Stats, and "ready today" muscle groups on the Log screen.
+- A 52-week training heatmap with your best weekly streak and most common day.
+- Monthly Wrapped with a story-sized share image, shown on the first open of a new month.
+- 20 achievements with progress and a celebration when one unlocks.
+
 ## v1.2.0 — 2026-10-04
 
 Nutrition becomes a full section, the weekly report arrives, and backups get easier.

@@ -40,6 +40,7 @@ const groupColor=g=>GROUP_COLORS[g]||EXTRA_COLORS[[...g].reduce((a,c)=>a+c.charC
 function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function fmt(n){return String(Number(n.toFixed(2)))}
 
+let onPersist=null;   // achievements re-check after every save
 function persist(){
   try{
     localStorage.setItem('wt_exercises',JSON.stringify(exercises));
@@ -51,6 +52,7 @@ function persist(){
     localStorage.setItem('wt_plan',JSON.stringify(plan));
     localStorage.setItem('wt_food',JSON.stringify(food));
   }catch{toast('⚠️ Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος. Κάνε Export.')}
+  onPersist?.();
 }
 
 /* ───── metrics ───── */
@@ -270,7 +272,7 @@ $('#saveBtn').onclick=()=>{
   persist();
   const st=computeStatuses().get(entry.id);
   const wasEdit=i>=0;
-  resetForm();renderHistory();checkBackup();
+  resetForm();renderHistory();checkBackup();renderReadyHint();
   if(st.cls==='record'){confetti();navigator.vibrate?.([40,60,40,60,120]);toast(`${badgeText(st)} · ${entry.exercise}`)}
   else toast(wasEdit?'✅ Ενημερώθηκε':`✅ Αποθηκεύτηκε · ${badgeText(st)}`);
 };
@@ -601,7 +603,7 @@ $('#stepsImport').onclick=()=>{
   stepsDlg.close();applySteps(found);
 };
 
-function renderStats(){renderRings();renderSteps();renderReport();renderTiles();renderChart();renderDonut();renderRecords()}
+function renderStats(){renderRecovery();renderRings();renderSteps();renderReport();renderWrapped();renderYear();renderTiles();renderChart();renderDonut();renderRecords();renderBadges()}
 
 /* ───── water: a bottle whose capacity is the daily goal and fills with every drink ───── */
 const fmtL=ml=>(ml/1000).toLocaleString('el-GR',{maximumFractionDigits:2});
@@ -1093,6 +1095,233 @@ $('#spotifyBox').onclick=e=>{
   spConnect();
 };
 
+/* ───── muscle recovery map: how rested each muscle group is since you last trained it ───── */
+const REC_COLORS={ready:'#2fbf71',almost:'#e0a336',rest:'#e07a5f',never:'#d5ddd2'};
+// when a log was really done: its save time if it was saved that day, otherwise the evening of its date
+const logTime=l=>l.created&&dayKey(new Date(l.created))===l.date?l.created:parseDay(l.date).getTime()+6*36e5;
+function groupRecovery(){
+  const last={},out={};
+  logs.forEach(l=>{const t=logTime(l),g=last[l.group];if(!g||t>g.t)last[l.group]={t,date:l.date}});
+  Object.keys(exercises).concat(Object.keys(last)).forEach(g=>{
+    if(out[g])return;
+    const L=last[g];
+    if(!L){out[g]={status:'never'};return}
+    const sets=logs.filter(l=>l.group===g&&l.date===L.date).reduce((a,l)=>a+l.sets.length,0);
+    const need=sets>=12?72:48,hours=(Date.now()-L.t)/36e5,p=hours/need;   // a big session (12+ sets) needs an extra day
+    out[g]={status:p>=1?'ready':p>=.6?'almost':'rest',hours,left:Math.max(0,need-hours),date:L.date,sets};
+  });
+  return out;
+}
+function bodySvg(c){
+  const col=g=>REC_COLORS[c[g]?.status||'never'];
+  const base=`<g fill="#eef1ec"><circle cx="60" cy="20" r="13"/><rect x="54" y="30" width="12" height="10" rx="3"/><path d="M34 44Q60 36 86 44L84 130Q60 138 36 130Z"/><rect x="17" y="46" width="17" height="46" rx="8"/><rect x="86" y="46" width="17" height="46" rx="8"/><rect x="14" y="92" width="14" height="42" rx="7"/><rect x="92" y="92" width="14" height="42" rx="7"/><circle cx="21" cy="140" r="6"/><circle cx="99" cy="140" r="6"/><rect x="37" y="130" width="22" height="66" rx="10"/><rect x="61" y="130" width="22" height="66" rx="10"/><rect x="39" y="196" width="18" height="46" rx="8"/><rect x="63" y="196" width="18" height="46" rx="8"/></g>`;
+  const front=`<g>${base}
+    <g fill="${col('Shoulders')}"><ellipse cx="30" cy="52" rx="11" ry="9"/><ellipse cx="90" cy="52" rx="11" ry="9"/></g>
+    <g fill="${col('Chest')}"><path d="M38 52Q48 45 58 49L58 74Q47 80 38 72Z"/><path d="M82 52Q72 45 62 49L62 74Q73 80 82 72Z"/></g>
+    <g fill="${col('Biceps')}"><ellipse cx="25.5" cy="74" rx="7" ry="14"/><ellipse cx="94.5" cy="74" rx="7" ry="14"/></g>
+    <g fill="${col('Abs')}"><rect x="47" y="80" width="26" height="46" rx="7"/></g><path d="M60 82V124M48 95H72M48 110H72" stroke="#fff" stroke-width="1.6" opacity=".8"/>
+    <g fill="${col('Legs')}"><rect x="40" y="136" width="17" height="52" rx="8"/><rect x="63" y="136" width="17" height="52" rx="8"/><rect x="42" y="202" width="12" height="34" rx="6"/><rect x="66" y="202" width="12" height="34" rx="6"/></g></g>`;
+  const back=`<g transform="translate(130 0)">${base}
+    <g fill="${col('Back')}"><path d="M40 48Q60 41 80 48L78 96Q60 112 42 96Z"/><rect x="50" y="102" width="20" height="22" rx="5"/></g>
+    <g fill="${col('Shoulders')}"><ellipse cx="30" cy="52" rx="11" ry="9"/><ellipse cx="90" cy="52" rx="11" ry="9"/></g>
+    <g fill="${col('Triceps')}"><ellipse cx="25.5" cy="76" rx="7" ry="14"/><ellipse cx="94.5" cy="76" rx="7" ry="14"/></g>
+    <g fill="${col('Legs')}"><ellipse cx="49" cy="138" rx="11" ry="9"/><ellipse cx="71" cy="138" rx="11" ry="9"/><rect x="40" y="150" width="17" height="40" rx="8"/><rect x="63" y="150" width="17" height="40" rx="8"/><ellipse cx="48" cy="214" rx="7" ry="15"/><ellipse cx="72" cy="214" rx="7" ry="15"/></g></g>`;
+  return`<svg viewBox="0 0 250 262" role="img" aria-label="Χάρτης αποκατάστασης μυών">${front}${back}<text x="60" y="258" text-anchor="middle" class="bodyLbl">Μπροστά</text><text x="190" y="258" text-anchor="middle" class="bodyLbl">Πίσω</text></svg>`;
+}
+const hoursTxt=h=>h>=36?`~${Math.round(h/24)} μέρες`:`~${Math.max(1,Math.round(h))} ώρες`;
+function renderRecovery(){
+  const r=groupRecovery();
+  $('#recoveryMap').innerHTML=bodySvg(r);
+  const order={ready:0,never:1,almost:2,rest:3};
+  $('#recoveryList').innerHTML=Object.entries(r).sort((a,b)=>order[a[1].status]-order[b[1].status]).map(([g,x])=>{
+    const txt=x.status==='never'?'δεν έχει δουλευτεί':x.status==='ready'?`έτοιμο · τελευταία ${shortDate(x.date)}`:`έτοιμο σε ${hoursTxt(x.left)}`;
+    return`<div class="recRow"><i style="background:${REC_COLORS[x.status]}"></i><b>${escapeHtml(g)}</b><span>${txt}</span></div>`;
+  }).join('');
+}
+// log screen: one tap on a rested group picks it
+function renderReadyHint(){
+  const r=groupRecovery(),ready=Object.entries(r).filter(([,x])=>x.status==='ready').sort((a,b)=>b[1].hours-a[1].hours).map(([g])=>g).filter(g=>exercises[g]).slice(0,4);
+  $('#readyHint').hidden=!ready.length;
+  $('#readyHint').innerHTML=ready.length?`<span>🟢 Έτοιμα σήμερα</span>${ready.map(g=>`<button type="button" class="chip" data-ready="${escapeHtml(g)}" style="--c:${groupColor(g)}">${escapeHtml(g)}</button>`).join('')}`:'';
+}
+$('#readyHint').onclick=e=>{const b=e.target.closest('[data-ready]');if(!b)return;group.value=b.dataset.ready;fillExercises()};
+
+/* ───── a year of training as a heatmap (sets per day) ───── */
+function bestWeekStreak(){
+  const per={};logs.forEach(l=>{const w=weekStart(l.date);(per[w]||(per[w]=new Set())).add(l.date)});
+  const weeks=Object.keys(per).sort();if(!weeks.length)return 0;
+  let best=0,run=0,prev=null;
+  weeks.forEach(w=>{const ok=per[w].size>=settings.goalWorkouts;run=ok?(prev&&addDays(prev,7)===w&&run?run+1:1):0;if(ok)prev=w;best=Math.max(best,run)});
+  return best;
+}
+function renderYear(){
+  const t=today(),start=addDays(weekStart(t),-7*51),per={},groupsOn={};
+  logs.forEach(l=>{per[l.date]=(per[l.date]||0)+l.sets.length;(groupsOn[l.date]||(groupsOn[l.date]=new Set())).add(l.group)});
+  const lvl=n=>!n?0:n<=6?1:n<=12?2:n<=20?3:4,S=13,G=3,L=26,T=16;
+  let cells='',months='';
+  for(let w=0;w<52;w++){
+    const ws=addDays(start,w*7),x=L+w*(S+G);
+    if(parseDay(ws).getDate()<=7||w===0){const m=parseDay(addDays(ws,6)).toLocaleDateString('el-GR',{month:'short'});months+=`<text x="${x}" y="11" class="yrTxt">${m}</text>`}
+    for(let d=0;d<7;d++){const day=addDays(ws,d);if(day>t)continue;cells+=`<rect x="${x}" y="${T+d*(S+G)}" width="${S}" height="${S}" rx="3" class="yl${lvl(per[day])}" data-d="${day}"/>`}
+  }
+  const W=L+52*(S+G),H=T+7*(S+G);
+  $('#yearGrid').innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Προπονήσεις 52 εβδομάδων">${months}<text x="0" y="${T+11}" class="yrTxt">Δευ</text><text x="0" y="${T+2*(S+G)+11}" class="yrTxt">Τετ</text><text x="0" y="${T+4*(S+G)+11}" class="yrTxt">Παρ</text>${cells}</svg>`;
+  const sc=$('#yearScroll');sc.scrollLeft=sc.scrollWidth;   // most recent weeks first in view
+  const year=t.slice(0,4),daysYear=new Set(logs.filter(l=>l.date.startsWith(year)).map(l=>l.date)).size;
+  const wd=[0,0,0,0,0,0,0];new Set(logs.map(l=>l.date)).forEach(d=>wd[(parseDay(d).getDay()+6)%7]++);
+  const topDay=Math.max(...wd)?['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'][wd.indexOf(Math.max(...wd))]:null;
+  $('#yearStats').innerHTML=[`<b>${daysYear}</b> προπονήσεις μέσα στο ${year}`,`Καλύτερο σερί: <b>${bestWeekStreak()}</b> εβδομάδες με στόχο ${settings.goalWorkouts}×`,topDay?`Πιο συχνή μέρα: <b>${topDay}</b>`:''].filter(Boolean).map(x=>`<div>${x}</div>`).join('');
+}
+$('#yearGrid').onclick=e=>{
+  const c=e.target.closest('[data-d]');if(!c)return;
+  const d=c.dataset.d,ls=logs.filter(l=>l.date===d);
+  toast(ls.length?`${formatDate(d)} · ${ls.reduce((a,l)=>a+l.sets.length,0)} sets · ${[...new Set(ls.map(l=>l.group))].join(', ')}`:`${formatDate(d)} · ξεκούραση`);
+};
+
+/* ───── monthly Wrapped ───── */
+const LOADS=[{kg:150000,one:'φάλαινα',many:'φάλαινες'},{kg:12000,one:'λεωφορείο',many:'λεωφορεία'},{kg:6000,one:'ελέφαντας',many:'ελέφαντες'},{kg:1500,one:'αυτοκίνητο',many:'αυτοκίνητα'},{kg:400,one:'πιάνο',many:'πιάνα'}];
+function loadCompare(kg){
+  const L=LOADS.find(x=>kg/x.kg>=1);if(!L)return'';
+  const n=kg/L.kg,r=n>=2?Math.round(n):Math.round(n*10)/10;
+  return`όσο ${r.toLocaleString('el-GR')} ${r===1?L.one:L.many}`;
+}
+const monthKey=off=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+off);return`${d.getFullYear()}-${pad(d.getMonth()+1)}`};
+const monthName=(ym,gen)=>{const[y,m]=ym.split('-').map(Number),d=new Date(y,m-1,1);return gen?d.toLocaleDateString('el-GR',{day:'numeric',month:'long'}).replace(/^\d+\s*/,''):d.toLocaleDateString('el-GR',{month:'long',year:'numeric'})};
+let wrappedOffset=0;
+function monthData(ym){
+  const ls=logs.filter(l=>l.date.startsWith(ym)),st=computeStatuses();
+  const count={},groupSets={};ls.forEach(l=>{count[l.exercise]=(count[l.exercise]||0)+1;groupSets[l.group]=(groupSets[l.group]||0)+l.sets.length});
+  const topEx=Object.entries(count).sort((a,b)=>b[1]-a[1])[0];
+  const topGroup=Object.entries(groupSets).sort((a,b)=>b[1]-a[1])[0];
+  const recs=ls.map(l=>({l,s:st.get(l.id)})).filter(x=>x.s?.cls==='record');
+  const bestRec=recs.sort((a,b)=>b.s.delta-a.s.delta)[0];
+  let heavy=null;ls.forEach(l=>l.sets.forEach(s=>{if(s.kg>0&&(!heavy||s.kg>heavy.kg))heavy={kg:s.kg,ex:l.exercise}}));
+  const days=Object.keys(water).concat(Object.keys(steps)).filter(d=>d.startsWith(ym));
+  const waterMl=Object.keys(water).filter(d=>d.startsWith(ym)).reduce((a,d)=>a+dayWater(d),0);
+  const sd=Object.keys(steps).filter(d=>d.startsWith(ym));
+  const wd=Object.keys(weights).filter(d=>d.startsWith(ym)).sort();
+  return{ym,workouts:new Set(ls.map(l=>l.date)).size,sets:ls.reduce((a,l)=>a+l.sets.length,0),vol:ls.filter(isWeighted).reduce((a,l)=>a+volume(l),0),
+    records:recs.length,topEx,topGroup,bestRec,heavy,waterL:waterMl/1000,stepsTotal:sd.reduce((a,d)=>a+steps[d],0),stepsAvg:sd.length?sd.reduce((a,d)=>a+steps[d],0)/sd.length:null,
+    wChange:wd.length>1?weights[wd[wd.length-1]]-weights[wd[0]]:null,hasAny:ls.length>0||days.length>0||wd.length>0};
+}
+function wrappedItems(m){
+  const vol=m.vol>=1000?`${fmt(Math.round(m.vol/100)/10)} τόνους`:`${fmtN(m.vol)} kg`;
+  return[
+    {i:'🏋️',k:'Προπονήσεις',v:`${m.workouts}`,s:`${m.sets} sets συνολικά`},
+    {i:'🏗️',k:'Σήκωσες',v:vol,s:loadCompare(m.vol)},
+    m.topEx&&{i:'⭐',k:'Η αγαπημένη σου άσκηση',v:m.topEx[0],s:`${m.topEx[1]} φορές${m.topGroup?` · περισσότερο ${m.topGroup[0]}`:''}`},
+    m.bestRec?{i:'🏆',k:'Μεγαλύτερο record',v:`${m.bestRec.l.exercise}`,s:`${badgeText(m.bestRec.s).replace('🏆 ','')} · σύνολο ${m.records} records`}:{i:'🏆',k:'Records',v:`${m.records}`,s:m.records?'':'ο επόμενος μήνας είναι δικός σου'},
+    m.heavy&&{i:'💪',k:'Βαρύτερο set',v:`${fmt(m.heavy.kg)} kg`,s:m.heavy.ex},
+    m.waterL?{i:'💧',k:'Νερό',v:`${fmtL(m.waterL*1000)} L`,s:`όσο ${Math.max(1,Math.round(m.waterL/1.5))} μπουκάλια 1,5 L`}:null,
+    m.stepsAvg!=null?{i:'👣',k:'Βήματα',v:fmtN(m.stepsTotal),s:`${fmtN(m.stepsAvg)} τη μέρα · ~${fmtN(m.stepsTotal*0.75/1000)} km`}:null,
+    m.wChange!=null?{i:'⚖️',k:'Βάρος',v:`${m.wChange<=0?'−':'+'}${fmtKg(Math.abs(m.wChange))} kg`,s:'από το πρώτο ως το τελευταίο ζύγισμα του μήνα'}:null,
+  ].filter(Boolean);
+}
+function renderWrapped(){
+  document.querySelectorAll('#wrappedMonths .chip').forEach(b=>b.classList.toggle('on',Number(b.dataset.m)===wrappedOffset));
+  const m=monthData(monthKey(wrappedOffset));
+  $('#wrappedShare').hidden=!m.hasAny;
+  $('#wrappedBody').innerHTML=m.hasAny
+    ?`<div class="wrapHead"><span>GymPilot Wrapped</span><b>${monthName(m.ym)}</b></div>${wrappedItems(m).map(x=>`<div class="wrapItem"><span class="wrapIcon">${x.i}</span><div><small>${x.k}</small><b>${escapeHtml(x.v)}</b>${x.s?`<span>${escapeHtml(x.s)}</span>`:''}</div></div>`).join('')}`
+    :'<div class="empty">Δεν υπάρχουν δεδομένα γι’ αυτόν τον μήνα ακόμα.</div>';
+}
+$('#wrappedMonths').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;wrappedOffset=Number(b.dataset.m);renderWrapped()};
+function wrappedImage(m){
+  const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d'),font=(w,s)=>`${w} ${s}px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif`;
+  const bg=g.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#24180f');bg.addColorStop(.55,'#3a2719');bg.addColorStop(1,'#14301f');g.fillStyle=bg;g.fillRect(0,0,W,H);
+  const glow=g.createRadialGradient(W*.85,120,0,W*.85,120,700);glow.addColorStop(0,'rgba(34,165,95,.35)');glow.addColorStop(1,'rgba(34,165,95,0)');g.fillStyle=glow;g.fillRect(0,0,W,H);
+  g.save();g.translate(70,90);g.scale(1.3,1.3);g.lineCap='round';g.lineJoin='round';
+  g.strokeStyle='#fff';g.lineWidth=13;g.stroke(new Path2D(MARK.ring));g.stroke(new Path2D(MARK.bar));
+  g.strokeStyle='#2c1e14';g.lineWidth=6;g.stroke(new Path2D(MARK.arrow));g.fillStyle='#5fe39a';g.fill(new Path2D(MARK.f1));g.fillStyle='#22a55f';g.fill(new Path2D(MARK.f2));g.restore();
+  g.font=font(800,60);g.fillStyle='#fff';g.fillText('Gym',220,160);const gw=g.measureText('Gym').width;g.fillStyle='#4cd88a';g.fillText('Pilot',220+gw,160);
+  g.font=font(700,34);g.fillStyle='#4cd88a';g.fillText('WRAPPED',222,205);
+  g.font=font(800,92);g.fillStyle='#fff';g.fillText(monthName(m.ym),70,370);
+  let y=470;
+  wrappedItems(m).slice(0,7).forEach(x=>{
+    g.font=font(400,58);g.fillText(x.i,70,y+62);
+    g.fillStyle='#d8cdbf';g.font=font(700,30);g.fillText(x.k.toUpperCase(),170,y+20);
+    g.fillStyle='#fff';let size=70;g.font=font(800,size);while(g.measureText(x.v).width>840&&size>40){size-=4;g.font=font(800,size)}g.fillText(x.v,170,y+92);
+    if(x.s){g.fillStyle='#4cd88a';g.font=font(600,30);g.fillText(x.s,170,y+138)}
+    g.fillStyle='#fff';y+=196;
+  });
+  g.fillStyle='#d8cdbf';g.font=font(600,30);g.textAlign='center';g.fillText('Lift. Push. Progress.',W/2,H-70);
+  return c;
+}
+$('#wrappedShare').onclick=()=>{
+  const m=monthData(monthKey(wrappedOffset)),url=wrappedImage(m).toDataURL('image/png');
+  const file=new File([b64ToBuf(url.split(',')[1])],`GymPilot-Wrapped-${m.ym}.png`,{type:'image/png'});
+  if(navigator.canShare?.({files:[file]}))navigator.share({files:[file],title:`GymPilot Wrapped · ${monthName(m.ym)}`}).catch(()=>{});
+  else{const a=document.createElement('a');a.href=url;a.download=file.name;a.click()}
+};
+// first open of a new month: last month's Wrapped, once
+const wrappedDlg=$('#wrappedDialog');
+function maybeShowWrapped(){
+  const cur=monthKey(0);
+  if(settings.wrappedSeen===cur||document.querySelector('dialog[open]')||midEntry())return;
+  const prev=monthKey(-1),m=monthData(prev);
+  settings.wrappedSeen=cur;persist();
+  if(!m.workouts)return;
+  $('#wrappedDlgTitle').textContent=`🎁 Το Wrapped του ${monthName(prev,true)}`;
+  wrappedDlg.showModal();
+}
+wrappedDlg.querySelectorAll('[data-wd-close]').forEach(b=>b.onclick=()=>wrappedDlg.close());
+$('#wrappedOpen').onclick=()=>{wrappedDlg.close();wrappedOffset=-1;switchTab('stats');setTimeout(()=>document.querySelector('.wrappedCard').scrollIntoView({behavior:'smooth',block:'start'}),60)};
+
+/* ───── achievements: worked out from your data; the unlock date is remembered ───── */
+const BADGES=[
+  {id:'first',i:'🎬',t:'Πρώτη προπόνηση',d:'Η πρώτη καταγραφή σου',v:s=>s.sessions,goal:1},
+  {id:'w10',i:'💪',t:'10 προπονήσεις',d:'10 μέρες προπόνησης',v:s=>s.days,goal:10},
+  {id:'w50',i:'🔥',t:'50 προπονήσεις',d:'50 μέρες προπόνησης',v:s=>s.days,goal:50},
+  {id:'w100',i:'🏛️',t:'100 προπονήσεις',d:'100 μέρες προπόνησης',v:s=>s.days,goal:100},
+  {id:'sets500',i:'🧱',t:'500 sets',d:'Σύνολο sets',v:s=>s.sets,goal:500},
+  {id:'sets2k',i:'🏗️',t:'2.000 sets',d:'Σύνολο sets',v:s=>s.sets,goal:2000},
+  {id:'pr1',i:'🏆',t:'Πρώτο record',d:'Ξεπέρασες τον εαυτό σου',v:s=>s.records,goal:1},
+  {id:'pr25',i:'👑',t:'25 records',d:'Νέα records συνολικά',v:s=>s.records,goal:25},
+  {id:'club100',i:'💯',t:'Club 100',d:'100 kg σε ένα set',v:s=>s.maxKg,goal:100,unit:' kg'},
+  {id:'club150',i:'🦍',t:'Club 150',d:'150 kg σε ένα set',v:s=>s.maxKg,goal:150,unit:' kg'},
+  {id:'ton10',i:'🚚',t:'10 τόνοι',d:'Συνολικός όγκος',v:s=>s.vol/1000,goal:10,unit:' t'},
+  {id:'ton100',i:'🚢',t:'100 τόνοι',d:'Συνολικός όγκος',v:s=>s.vol/1000,goal:100,unit:' t'},
+  {id:'streak4',i:'📆',t:'Σερί 4 εβδομάδων',d:'Ο εβδομαδιαίος στόχος 4 φορές στη σειρά',v:s=>s.streak,goal:4},
+  {id:'streak12',i:'⚡',t:'Σερί 12 εβδομάδων',d:'Ο εβδομαδιαίος στόχος 12 φορές στη σειρά',v:s=>s.streak,goal:12},
+  {id:'early',i:'🌅',t:'Πρωινός τύπος',d:'Προπόνηση πριν τις 8:00',v:s=>s.early,goal:1},
+  {id:'night',i:'🌙',t:'Νυχτοπούλι',d:'Προπόνηση μετά τις 22:00',v:s=>s.night,goal:1},
+  {id:'water30',i:'💧',t:'Υδάτινος',d:'30 μέρες με στόχο νερού',v:s=>s.waterDays,goal:30},
+  {id:'steps10k',i:'👟',t:'10.000 βήματα',d:'Σε μία μέρα',v:s=>s.maxSteps,goal:10000},
+  {id:'weight',i:'🎯',t:'Στόχος κιλών',d:'Έπιασες τον στόχο βάρους',v:s=>s.weightReached,goal:1},
+  {id:'meals7',i:'🥗',t:'Καθαρή εβδομάδα',d:'7 μέρες με όλα τα γεύματα',v:s=>s.fullMeals,goal:7},
+];
+let badges=load('wt_badges',{});   // {id: "2026-10-04"} — when each one unlocked
+if(!badges||typeof badges!=='object'||Array.isArray(badges))badges={};
+function badgeStats(){
+  const st=computeStatuses();let maxKg=0,early=0,night=0;
+  logs.forEach(l=>{l.sets.forEach(s=>{if(s.kg>maxKg)maxKg=s.kg});if(l.created&&dayKey(new Date(l.created))===l.date){const h=new Date(l.created).getHours();if(h<8)early++;if(h>=22)night++}});
+  return{sessions:logs.length,days:new Set(logs.map(l=>l.date)).size,sets:logs.reduce((a,l)=>a+l.sets.length,0),
+    records:[...st.values()].filter(x=>x.cls==='record').length,maxKg,vol:logs.filter(isWeighted).reduce((a,l)=>a+volume(l),0),
+    streak:bestWeekStreak(),early,night,waterDays:Object.keys(water).filter(d=>dayWater(d)>=settings.goalWater).length,
+    maxSteps:Math.max(0,...Object.values(steps)),weightReached:goalProgress(latestWeight()?.kg)?.reached?1:0,
+    fullMeals:plan.meals.length?Object.values(food).filter(f=>plan.meals.every(m=>f.meals.some(x=>x.id===m.id))).length:0};
+}
+function checkBadges(silent){
+  const s=badgeStats(),fresh=BADGES.filter(b=>!badges[b.id]&&b.v(s)>=b.goal);
+  if(!fresh.length)return;
+  fresh.forEach(b=>badges[b.id]=today());
+  try{localStorage.setItem('wt_badges',JSON.stringify(badges))}catch{}
+  if(!$('#view-stats').hidden)renderBadges();
+  if(silent)return;
+  confetti();toast(fresh.length===1?`🏅 Νέο επίτευγμα: ${fresh[0].i} ${fresh[0].t}`:`🏅 ${fresh.length} νέα επιτεύγματα!`);
+}
+let badgeTimer=null;
+const scheduleBadges=()=>{clearTimeout(badgeTimer);badgeTimer=setTimeout(()=>checkBadges(false),700)};
+function renderBadges(){
+  const s=badgeStats(),list=BADGES.map(b=>({...b,val:b.v(s),at:badges[b.id]}));
+  const got=list.filter(b=>b.at).sort((a,b)=>b.at.localeCompare(a.at)),locked=list.filter(b=>!b.at).sort((a,b)=>b.val/b.goal-a.val/a.goal);
+  $('#badgeCount').textContent=`${got.length}/${BADGES.length}`;
+  const num=(v,b)=>b.unit===' t'?fmt(Math.round(v*10)/10):fmtN(v);
+  $('#badgeGrid').innerHTML=got.concat(locked).map(b=>`<div class="ach${b.at?' got':''}" title="${escapeHtml(b.d)}"><span class="bIcon">${b.i}</span><b>${b.t}</b><small>${b.at?formatDate(b.at):b.d}</small>${b.at?'':`<div class="bBar"><i style="width:${Math.min(100,b.val/b.goal*100).toFixed(0)}%"></i></div><small class="bProg">${num(Math.min(b.val,b.goal),b)} / ${num(b.goal,b)}${b.unit||''}</small>`}</div>`).join('');
+}
+onPersist=scheduleBadges;
+
 /* ───── tabs ───── */
 function switchTab(t){
   ['log','history','stats','nutrition'].forEach(v=>$('#view-'+v).hidden=v!==t);
@@ -1102,6 +1331,7 @@ function switchTab(t){
   });
   if(t==='history')renderHistory();
   if(t==='stats')renderStats();
+  if(t==='log')renderReadyHint();
   if(t==='nutrition')renderNutrition();
   window.scrollTo(0,0);
 }
@@ -1147,7 +1377,7 @@ function checkBackup(){
 }
 async function exportData(){
   const pf=planFile&&planFile.size<=8*1024*1024?{name:planFile.name,type:planFile.type,size:planFile.size,added:planFile.added,b64:bufToB64(planFile.data)}:null;   // in memory already: no await before share
-  const json=JSON.stringify({version:6,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,plan,food,planFile:pf,settings},null,2);
+  const json=JSON.stringify({version:6,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,plan,food,planFile:pf,badges,settings},null,2);
   const file=new File([json],'GymPilot-backup.json',{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
@@ -1191,6 +1421,7 @@ $('#importFile').onchange=async e=>{
       if(meals.length||extras.length)newFood[k]={meals,extras};
     });
     const fn=Object.keys(newFood).length;
+    if(d.badges&&typeof d.badges==='object')Object.entries(d.badges).forEach(([k,v])=>{if(!badges[k]&&validDay(v)&&BADGES.some(b=>b.id===k))badges[k]=v});
     // the plan only comes in if this phone doesn't have one yet
     const takePlan=!plan.meals.length&&!plan.kcalGoal&&!plan.proteinGoal&&d.plan&&Array.isArray(d.plan.meals);
     const takeFile=!planFile&&d.planFile?.b64;
@@ -1214,7 +1445,8 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden)return;
   swReg?.update().catch(()=>{});
   spPoll();
-  checkBackup();setTimeout(maybeAskBackup,800);
+  checkBackup();setTimeout(maybeAskBackup,800);setTimeout(maybeShowWrapped,1600);
+  if(!$('#view-log').hidden)renderReadyHint();
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
@@ -1245,5 +1477,7 @@ function maybeAskBackup(){
 $('#backupNow').onclick=()=>{backupDlg.close();exportData()};   // straight from the tap, so the share sheet is allowed
 backupDlg.querySelectorAll('[data-later]').forEach(b=>b.onclick=()=>backupDlg.close());
 date.value=today();fillGroups();checkBackup();
+checkBadges(true);renderReadyHint();   // badges you already earned are filed quietly on first run
+setTimeout(maybeShowWrapped,2200);
 setTimeout(maybeAskBackup,1200);
 spHandleRedirect().finally(spPoll);
