@@ -302,6 +302,23 @@
   </form>
 </dialog>
 
+<dialog id="backupDialog">
+  <div class="dialogHead">
+    <h3>☁️ Εβδομαδιαίο backup</h3>
+    <button type="button" class="closeX" data-later aria-label="Αργότερα">✕</button>
+  </div>
+  <p class="backupIntro">Σώσε ένα αντίγραφο των δεδομένων σου στο iCloud. Το αρχείο έχει πάντα το ίδιο όνομα, οπότε το νέο αντικαθιστά το παλιό και κρατάς πάντα το πιο πρόσφατο.</p>
+  <ol class="backupSteps">
+    <li>Πάτα <b>Backup τώρα</b></li>
+    <li>Διάλεξε <b>Αποθήκευση στα Αρχεία</b> → <b>iCloud Drive</b>, στον ίδιο φάκελο κάθε φορά</li>
+    <li>Αν σε ρωτήσει, πάτα <b>Αντικατάσταση</b></li>
+  </ol>
+  <div class="dialogBtns">
+    <button type="button" class="secondary" data-later>Αργότερα</button>
+    <button type="button" id="backupNow">💾 Backup τώρα</button>
+  </div>
+</dialog>
+
 <dialog id="settingsDialog">
   <form method="dialog" id="settingsForm">
     <div class="dialogHead">

@@ -47,7 +47,7 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 
 ## Your data
 - Everything lives in the browser's `localStorage` on your phone: no account, no backend, no analytics. The optional Spotify sign-in is only for music; its tokens stay on the device and are never included in backups.
-- **Backup / restore** from Settings (⚙️): exports a JSON file through the share sheet (Files, iCloud, Drive). Restoring merges with what's already there. If you haven't backed up in 30 days, the gear shows a dot.
+- **Weekly backup**: on the first open after 7 days, a small prompt offers a one-tap backup through the share sheet. The file is always called `GymPilot-backup.json`, so saving it to the same iCloud Drive folder replaces the old one. No server is involved. Backup and restore are also in Settings (⚙️), and restoring merges with what's already there.
 - Data belongs to the address the app is opened from. If you move to another URL, back up first and restore there.
 
 ## Install on your phone
