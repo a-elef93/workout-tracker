@@ -758,6 +758,117 @@ function renderNutritionWeek(){
 }
 function renderNutrition(){renderWeight();renderWater();renderNutritionWeek()}
 
+/* ───── Spotify mini player (optional) ─────
+   Talks to the Spotify Web API, which controls whatever is playing on your account — including the
+   Spotify app on this phone. Auth is Authorization Code + PKCE straight from the page: no server, no
+   secret, and GymPilot itself still has no accounts. Needs Spotify Premium. Tokens stay on this device
+   and are not part of backups. */
+const SPOTIFY_CLIENT_ID='';   // can be filled in once; until then it's pasted in settings
+const SP_SCOPES='user-read-playback-state user-modify-playback-state user-read-currently-playing';
+const SP_ICON={play:'M8 5v14l11-7z',pause:'M6.5 5h4v14h-4zM13.5 5h4v14h-4z'};
+const spClientId=()=>SPOTIFY_CLIENT_ID||settings.spotifyClientId||'';
+const spRedirect=()=>new URL('./',location.href).href;
+let sp=load('wt_spotify',null),spState=null,spTimer=null,spTick=null,spAt=0;
+function spSave(){try{sp?localStorage.setItem('wt_spotify',JSON.stringify(sp)):localStorage.removeItem('wt_spotify')}catch{}}
+const b64url=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const randStr=n=>{const c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';return[...crypto.getRandomValues(new Uint8Array(n))].map(x=>c[x%c.length]).join('')};
+const pkceChallenge=async v=>b64url(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));
+
+async function spConnect(){
+  const id=spClientId().trim();
+  if(!/^[0-9a-f]{32}$/i.test(id))return toast('Βάλε το Client ID από το Spotify (32 χαρακτήρες)');
+  const verifier=randStr(64),state=randStr(16);
+  localStorage.setItem('wt_sp_pkce',JSON.stringify({verifier,state}));
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({response_type:'code',client_id:id,scope:SP_SCOPES,redirect_uri:spRedirect(),code_challenge_method:'S256',code_challenge:await pkceChallenge(verifier),state});
+}
+async function spToken(params){
+  const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:spClientId(),...params})});
+  if(!r.ok){const e=new Error('token');e.status=r.status;throw e}
+  const j=await r.json();
+  sp={access:j.access_token,refresh:j.refresh_token||sp?.refresh,exp:Date.now()+((j.expires_in||3600)-60)*1000};spSave();
+}
+async function spRefresh(){
+  try{await spToken({grant_type:'refresh_token',refresh_token:sp.refresh})}
+  catch(e){
+    if(e.status===400||e.status===401){sp=null;spSave();renderMusic(null);toast('Η σύνδεση με Spotify έληξε — συνδέσου ξανά από τις Ρυθμίσεις')}   // offline is not "logged out"
+    throw e;
+  }
+}
+async function spApi(method,path,retry=true){
+  if(!sp)throw new Error('not connected');
+  if(Date.now()>sp.exp)await spRefresh();
+  const r=await fetch('https://api.spotify.com/v1'+path,{method,headers:{Authorization:'Bearer '+sp.access}});
+  if(r.status===401&&retry){await spRefresh();return spApi(method,path,false)}
+  return r;
+}
+// back from Spotify's login page with ?code=… (or ?error=…)
+async function spHandleRedirect(){
+  const q=new URLSearchParams(location.search);
+  if(!q.has('code')&&!q.has('error'))return;
+  history.replaceState(null,'',spRedirect());
+  const pk=load('wt_sp_pkce',null);localStorage.removeItem('wt_sp_pkce');
+  if(q.has('error'))return toast('Η σύνδεση με Spotify ακυρώθηκε');
+  if(!pk||q.get('state')!==pk.state)return toast('⚠️ Η σύνδεση με Spotify απέτυχε — δοκίμασε ξανά');
+  try{await spToken({grant_type:'authorization_code',code:q.get('code'),redirect_uri:spRedirect(),code_verifier:pk.verifier});toast('🎵 Συνδέθηκες με Spotify')}
+  catch{toast('⚠️ Η σύνδεση με Spotify απέτυχε — έλεγξε το Redirect URI στο Spotify')}
+}
+async function spPoll(){
+  clearTimeout(spTimer);
+  if(!sp||document.hidden)return;
+  try{const r=await spApi('GET','/me/player');spState=r.status===200?await r.json():null;spAt=Date.now()}catch{}
+  renderMusic(spState);
+  spTimer=setTimeout(spPoll,spState?.is_playing?5000:15000);
+}
+function renderMusic(s){
+  const it=s?.item,show=!!(sp&&it);
+  $('#musicBar').hidden=!show;document.body.classList.toggle('hasMusic',show);
+  clearInterval(spTick);
+  if(!show)return;
+  const imgs=it.album?.images||it.images||[],img=imgs[imgs.length-1]||imgs[0];
+  if(img&&$('#mbCover').getAttribute('src')!==img.url)$('#mbCover').src=img.url;
+  $('#mbCover').hidden=!img;
+  $('#mbTitle').textContent=it.name||'';
+  $('#mbArtist').textContent=it.artists?.map(a=>a.name).join(', ')||it.show?.name||'';
+  $('#mbPlayIcon').setAttribute('d',s.is_playing?SP_ICON.pause:SP_ICON.play);
+  $('#mbPlay').setAttribute('aria-label',s.is_playing?'Παύση':'Αναπαραγωγή');
+  const tick=()=>{const p=Math.min(it.duration_ms,(s.progress_ms||0)+(s.is_playing?Date.now()-spAt:0));$('#mbProgress').style.width=`${it.duration_ms?p/it.duration_ms*100:0}%`};
+  tick();if(s.is_playing)spTick=setInterval(tick,1000);
+}
+$('#musicBar').onclick=async e=>{
+  const b=e.target.closest('[data-cmd]');if(!b||!spState)return;
+  let cmd=b.dataset.cmd;if(cmd==='toggle')cmd=spState.is_playing?'pause':'play';
+  const call={play:['PUT','/me/player/play'],pause:['PUT','/me/player/pause'],next:['POST','/me/player/next'],previous:['POST','/me/player/previous']}[cmd];
+  if(cmd==='play'||cmd==='pause'){spState.progress_ms=(spState.progress_ms||0)+(spState.is_playing?Date.now()-spAt:0);spAt=Date.now();spState.is_playing=cmd==='play';renderMusic(spState)}   // feels instant
+  try{
+    const r=await spApi(...call);
+    if(r.status===404)toast('Άνοιξε το Spotify στο κινητό και βάλε κάτι να παίζει');
+    else if(r.status===403)toast('Ο έλεγχος του Spotify χρειάζεται Premium');
+  }catch{toast('⚠️ Δεν ήταν δυνατή η σύνδεση με το Spotify')}
+  setTimeout(spPoll,cmd==='next'||cmd==='previous'?900:500);
+};
+function renderSpotifySettings(){
+  const box=$('#spotifyBox');
+  if(sp){
+    box.innerHTML=`<div class="storageInfo">🎵 Συνδεδεμένο με Spotify. Ο mini player εμφανίζεται πάνω από τις καρτέλες όταν παίζει μουσική.</div><button type="button" class="secondary wide" data-sp="disconnect">Αποσύνδεση Spotify</button>`;
+    return;
+  }
+  box.innerHTML=`<p class="backupHint">Mini player ⏮ ⏯ ⏭ για το Spotify μέσα στο GymPilot. Προαιρετικό, χρειάζεται Spotify Premium. Το GymPilot δεν έχει λογαριασμούς: η σύνδεση γίνεται μόνο με το Spotify, για τη μουσική.</p>
+    ${SPOTIFY_CLIENT_ID?'':`<label class="plain spLabel">Spotify Client ID<input id="spClientId" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="32 χαρακτήρες" value="${escapeHtml(settings.spotifyClientId||'')}"></label>`}
+    <button type="button" class="wide" data-sp="connect">🎵 Σύνδεση με Spotify</button>
+    ${SPOTIFY_CLIENT_ID?'':`<details class="howto"><summary>Πώς παίρνω Client ID;</summary><ol>
+      <li>Μπες στο <b>developer.spotify.com/dashboard</b> → <b>Create app</b>.</li>
+      <li>Redirect URI ακριβώς: <code>${escapeHtml(spRedirect())}</code></li>
+      <li>Στο «Which API/SDKs» διάλεξε <b>Web API</b> και αποθήκευσε.</li>
+      <li>Στο <b>User Management</b> πρόσθεσε το email του λογαριασμού σου στο Spotify.</li>
+      <li>Αντέγραψε το <b>Client ID</b> από τα Settings της εφαρμογής και επικόλλησέ το εδώ.</li></ol></details>`}`;
+}
+$('#spotifyBox').onclick=e=>{
+  const b=e.target.closest('[data-sp]');if(!b)return;
+  if(b.dataset.sp==='disconnect'){sp=null;spSave();spState=null;renderMusic(null);renderSpotifySettings();return toast('Αποσυνδέθηκες από το Spotify')}
+  const inp=$('#spClientId');if(inp){settings.spotifyClientId=inp.value.trim();persist()}
+  spConnect();
+};
+
 /* ───── tabs ───── */
 function switchTab(t){
   ['log','history','stats','nutrition'].forEach(v=>$('#view-'+v).hidden=v!==t);
@@ -776,6 +887,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.t
 const settingsDlg=$('#settingsDialog');
 async function openSettings(){
   $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;$('#goalWater').value=settings.goalWater;$('#goalWeight').value=settings.weightGoal==null?'':fmtKg(settings.weightGoal);
+  renderSpotifySettings();
   settingsDlg.showModal();
   const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water','wt_weight'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
@@ -861,6 +973,7 @@ $('#clearBtn').onclick=()=>{
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden)return;
   swReg?.update().catch(()=>{});
+  spPoll();
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
@@ -882,3 +995,4 @@ if('serviceWorker'in navigator){
   });
 }
 date.value=today();fillGroups();checkBackup();
+spHandleRedirect().finally(spPoll);

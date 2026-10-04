@@ -41,8 +41,12 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 - **Weekly summary**: rings for water-goal days, weigh-ins and goal progress, plus a weekly log of average weight, change vs the previous week (toward or away from the goal) and water days.
 - *Coming soon*: the dietitian's plan, meal check-offs, calories and protein vs target.
 
+### 🎵 Music (optional)
+- A Spotify mini player sits above the tabs while music plays: cover, title, a progress line and ⏮ ⏯ ⏭, so you don't leave the workout.
+- It works through the Spotify Web API, signing in with Spotify via PKCE straight from the page, with no server and no secret. It needs **Spotify Premium** and your own Spotify developer app (Settings → Music walks you through it). Spotify currently limits these apps to 5 allow-listed users and asks you to sign in again every 6 months.
+
 ## Your data
-- Everything lives in the browser's `localStorage` on your phone: no account, no backend, no analytics.
+- Everything lives in the browser's `localStorage` on your phone: no account, no backend, no analytics. The optional Spotify sign-in is only for music; its tokens stay on the device and are never included in backups.
 - **Backup / restore** from Settings (⚙️): exports a JSON file through the share sheet (Files, iCloud, Drive). Restoring merges with what's already there. If you haven't backed up in 30 days, the gear shows a dot.
 - Data belongs to the address the app is opened from. If you move to another URL, back up first and restore there.
 
