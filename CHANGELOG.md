@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- Nutrition plan: attach the dietitian's PDF or photo, set calorie and protein targets (with a protein suggestion from your weight), and list the day's meals.
+- Food today: check off meals as you eat them, add off-plan food, and two rings for calories and protein. Adherence counts only from the day the plan started.
+- Strength per kg of bodyweight on the personal-records list.
+- Weekly report in Stats (this week or last) covering training, steps, water, weight and food, shareable as an image.
+- Backups now include the plan, its file and the food log. "Coming soon" is gone.
 - Weekly one-tap backup: a small prompt on the first open after 7 days ("Later" asks again the next day). The file is always named `GymPilot-backup.json`, so saving to the same iCloud folder replaces the previous one. The gear dot now shows after 7 days instead of 30.
 - Compact header on every tab, level with the logo, so the sets fit on screen.
 - Optional Spotify mini player above the tabs (cover, title, progress, ⏮ ⏯ ⏭) through the Spotify Web API with PKCE sign-in. It needs Premium and your own Spotify developer app (Settings → Music).

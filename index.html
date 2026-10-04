@@ -126,6 +126,19 @@
       <div id="stepsBody"></div>
     </section>
 
+    <section class="card reportCard">
+      <div class="sectionTitle">
+        <h2>📋 Αναφορά εβδομάδας</h2>
+        <button id="reportShare" class="small" type="button">Κοινοποίηση</button>
+      </div>
+      <div id="reportWeeks" class="chips metric" role="group" aria-label="Εβδομάδα">
+        <button class="chip on" data-w="0" style="--c:var(--brand)">Αυτή</button>
+        <button class="chip" data-w="-1" style="--c:var(--brand)">Προηγούμενη</button>
+      </div>
+      <div id="reportRange" class="sub reportRange"></div>
+      <div id="reportBody" class="reportGrid"></div>
+    </section>
+
     <div id="tiles" class="tiles"></div>
 
     <section class="card">
@@ -154,6 +167,27 @@
   </section>
   <!-- ───────── ΔΙΑΤΡΟΦΗ ───────── -->
   <section id="view-nutrition" class="view" hidden>
+    <section class="card foodCard">
+      <div class="sectionTitle">
+        <h2>🍽️ Διατροφή σήμερα</h2>
+        <button id="planBtn" class="secondary small" type="button">📄 Πρόγραμμα</button>
+      </div>
+      <div id="foodRings" class="foodRings"></div>
+      <div id="mealList" class="mealList"></div>
+      <details id="extraFood" class="extraFood">
+        <summary>+ Εκτός προγράμματος</summary>
+        <form id="extraForm" class="extraForm">
+          <input id="extraLabel" type="text" autocomplete="off" placeholder="Τι έφαγες (προαιρετικό)" aria-label="Τι έφαγες">
+          <div class="row two">
+            <label>Θερμίδες<input id="extraKcal" type="text" inputmode="numeric" autocomplete="off" placeholder="kcal"></label>
+            <label>Πρωτεΐνη (g)<input id="extraProt" type="text" inputmode="decimal" autocomplete="off" placeholder="g"></label>
+          </div>
+          <button type="submit" class="wide">Πρόσθεσε</button>
+        </form>
+      </details>
+      <div id="extraLog" class="waterLog"></div>
+    </section>
+
     <section class="card weightCard">
       <div class="sectionTitle">
         <h2>⚖️ Ζύγισμα</h2>
@@ -206,17 +240,6 @@
       <div id="nutWeekNote" class="stepsInsight"></div>
       <h3 class="logTitle">Εβδομαδιαίο log</h3>
       <div id="nutWeeks" class="weekLog"></div>
-    </section>
-
-    <section class="card soonHero">
-      <span class="soonBadge">Coming soon</span>
-      <h2>🥗 Το πρόγραμμα διατροφής σου</h2>
-      <p>Σύνδεσε το πρόγραμμα του διατροφολόγου σου, ώστε προπόνηση, βήματα και διατροφή να είναι όλα σε ένα σημείο.</p>
-      <ul class="soonList">
-        <li><span class="soonIcon">📄</span><div><b>Πρόγραμμα διατροφολόγου</b><span>Ανέβασε το PDF ή μια φωτογραφία του προγράμματος, με τους στόχους του.</span></div></li>
-        <li><span class="soonIcon">✅</span><div><b>Γεύματα της ημέρας</b><span>Τσέκαρε κάθε γεύμα όταν το τρως.</span></div></li>
-        <li><span class="soonIcon">🔥</span><div><b>Θερμίδες &amp; πρωτεΐνη</b><span>Tracking σε σχέση με τον στόχο του προγράμματός σου.</span></div></li>
-      </ul>
     </section>
   </section>
 </main>
@@ -300,6 +323,32 @@
       <button type="submit">Κλείσιμο</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="planDialog">
+  <div class="dialogHead">
+    <h3>📄 Πρόγραμμα διατροφής</h3>
+    <button type="button" class="closeX" data-plan-close aria-label="Κλείσιμο">✕</button>
+  </div>
+  <div class="setGroup">
+    <h4>Στόχοι ημέρας</h4>
+    <div class="row two">
+      <label>Θερμίδες (kcal)<input id="planKcal" type="text" inputmode="numeric" autocomplete="off" placeholder="π.χ. 2200"></label>
+      <label>Πρωτεΐνη (g)<input id="planProt" type="text" inputmode="numeric" autocomplete="off" placeholder="π.χ. 150"></label>
+    </div>
+    <p id="protHint" class="backupHint"></p>
+  </div>
+  <div class="setGroup">
+    <h4>Αρχείο διατροφολόγου</h4>
+    <div id="planFileBox"></div>
+    <input id="planFile" type="file" accept="application/pdf,image/*" hidden>
+  </div>
+  <div class="setGroup">
+    <h4>Γεύματα της ημέρας</h4>
+    <div id="mealEditor" class="mealEditor"></div>
+    <button type="button" id="addMealBtn" class="secondary wide">+ Γεύμα</button>
+  </div>
+  <div class="dialogBtns"><button type="button" data-plan-close>Έτοιμο</button></div>
 </dialog>
 
 <dialog id="backupDialog">

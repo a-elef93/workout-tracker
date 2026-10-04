@@ -32,14 +32,16 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 - Weekly rings for workouts, sets and muscle groups, plus a week strip.
 - Tiles: weekly streak, total workouts, total volume, records.
 - Progress chart per exercise: top set, estimated 1RM (Epley) or volume.
-- Sets per muscle group over the last 30 days, and a personal-records list.
+- Sets per muscle group over the last 30 days, and a personal-records list with **strength per kg of bodyweight** (estimated 1RM ÷ your weight at the time, e.g. *1.24× BW*).
 - **Steps**: today vs your daily goal, 7-day bars with workout days marked, and average steps on training vs rest days.
+- **Weekly report**: workouts, sets and volume, new records, steps, water days, average weight and its change, plan adherence and protein days, for this week or the last. You can share it as an image.
 
 ### 🥗 Nutrition
+- **Today**: two rings for calories and protein against your targets. Check off each meal of your plan when you eat it, or add something off-plan (kcal and protein).
+- **Plan**: attach the dietitian's PDF or photo (stored on the device in IndexedDB and included in backups), set daily calorie and protein targets (a protein target of ~1.8 g/kg is suggested from your weight), and list the day's meals with time, contents, kcal and protein.
 - **Water**: a bottle sized to your daily goal fills up as you log drinks (+250 / +330 / +500 / +750 ml or a custom amount). Any drink can be undone.
 - **Weigh-ins**: one per day, with the change since the last weigh-in, a weight goal, progress measured from the weight you had when you set the goal, and a 90-day chart.
-- **Weekly summary**: rings for water-goal days, weigh-ins and goal progress, plus a weekly log of average weight, change vs the previous week (toward or away from the goal) and water days.
-- *Coming soon*: the dietitian's plan, meal check-offs, calories and protein vs target.
+- **Weekly summary**: rings for water-goal days, weigh-ins and goal progress, plus a weekly log of average weight, change vs the previous week (toward or away from the goal), water days, plan adherence and protein days.
 
 ### 🎵 Music (optional)
 - A Spotify mini player sits above the tabs while music plays: cover, title, a progress line and ⏮ ⏯ ⏭, so you don't leave the workout.
@@ -77,7 +79,7 @@ Then tap **↻ Συγχρονισμός** (Sync) on the Steps card in Stats. Aft
 ```
 index.html      markup for all four tabs and the dialogs
 style.css       theme (green + coffee on a light background) and components
-app.js          all app logic: logging, history, stats, steps, water, weigh-ins, backup
+app.js          all app logic: logging, history, stats, steps, nutrition, weigh-ins, reports, backup
 sw.js           service worker (offline + updates)
 manifest.json   install metadata
 icon*.png/svg   app icons
@@ -93,8 +95,6 @@ python3 -m http.server 8000
 Then open <http://localhost:8000>. After changing files, bump `CACHE` in `sw.js` so installed copies pick up the new version.
 
 ## Roadmap
-- Dietitian's plan (PDF/photo) with daily meal check-offs
-- Calories and protein against the plan's targets
 - Workout templates (Push / Pull / Legs) and a session mode
 - Native wrapper for automatic Apple Health sync
 
