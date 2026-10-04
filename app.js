@@ -909,18 +909,21 @@ function saveSettings(){
 settingsDlg.addEventListener('close',saveSettings);   // "Έτοιμο", Esc
 
 // no banner on the main screen any more: a dot on the gear + a note in settings
-const backupDue=()=>logs.length>=5&&(Date.now()-(settings.lastExport||0))/864e5>30;
+// weekly: enough data to be worth saving and 7+ days since the last backup
+const BACKUP_DAYS=7;
+const hasData=()=>logs.length+Object.keys(weights).length+Object.keys(water).length+Object.keys(steps).length>=3;
+const backupDue=()=>hasData()&&(Date.now()-(settings.lastExport||0))/864e5>=BACKUP_DAYS;
 function checkBackup(){
   const due=backupDue();
   $('#settingsBtn').classList.toggle('needsBackup',due);
   $('#backupHint').classList.toggle('due',due);
   $('#backupHint').textContent=due
-    ?`⚠️ ${settings.lastExport?'Πάνε πάνω από 30 μέρες από το τελευταίο backup.':'Δεν έχεις κάνει ακόμα backup.'} Τα δεδομένα μένουν μόνο σε αυτό το κινητό.`
-    :'Σώζει προπονήσεις, βήματα, νερό και ζυγίσματα σε αρχείο (Αρχεία, iCloud, Drive).';
+    ?`⚠️ ${settings.lastExport?'Πέρασε μια εβδομάδα από το τελευταίο backup.':'Δεν έχεις κάνει ακόμα backup.'} Τα δεδομένα μένουν μόνο σε αυτό το κινητό.`
+    :'Σώζει όλα σου τα δεδομένα σε ένα αρχείο. Σώσ’ το στο iCloud Drive, στον ίδιο φάκελο κάθε φορά, και το νέο αντικαθιστά το παλιό.';
 }
 async function exportData(){
   const json=JSON.stringify({version:5,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,settings},null,2);
-  const file=new File([json],`gympilot-backup-${today()}.json`,{type:'application/json'});
+  const file=new File([json],'GymPilot-backup.json',{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
     else{const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;a.click();URL.revokeObjectURL(a.href)}
@@ -974,6 +977,7 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden)return;
   swReg?.update().catch(()=>{});
   spPoll();
+  checkBackup();setTimeout(maybeAskBackup,800);
   // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
   if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα')}
   tickTimer();
@@ -994,5 +998,15 @@ if('serviceWorker'in navigator){
     reloaded=true;location.reload();
   });
 }
+/* once a week, on the first open after 7 days: a small prompt with one button (iOS needs a tap to save to iCloud) */
+const backupDlg=$('#backupDialog');
+function maybeAskBackup(){
+  if(!backupDue()||settings.backupAskedOn===today()||midEntry())return;
+  settings.backupAskedOn=today();persist();   // "later" = ask again tomorrow
+  backupDlg.showModal();
+}
+$('#backupNow').onclick=()=>{backupDlg.close();exportData()};   // straight from the tap, so the share sheet is allowed
+backupDlg.querySelectorAll('[data-later]').forEach(b=>b.onclick=()=>backupDlg.close());
 date.value=today();fillGroups();checkBackup();
+setTimeout(maybeAskBackup,1200);
 spHandleRedirect().finally(spPoll);
