@@ -760,7 +760,6 @@ function renderNutrition(){renderWeight();renderWater();renderNutritionWeek()}
 
 /* ───── tabs ───── */
 function switchTab(t){
-  document.body.classList.toggle('onLog',t==='log');   // the tall header banner is only on the log screen
   ['log','history','stats','nutrition'].forEach(v=>$('#view-'+v).hidden=v!==t);
   document.querySelectorAll('.tab').forEach(b=>{
     const on=b.dataset.tab===t;b.classList.toggle('active',on);

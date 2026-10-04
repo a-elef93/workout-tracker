@@ -44,20 +44,10 @@ header::after{
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 72 C30 50 50 48 75 62 S120 30 150 38 S200 70 230 52 S280 18 310 34 S370 60 400 44 L400 100 L0 100Z' fill='white'/%3E%3C/svg%3E") bottom/100% 100% no-repeat;
 }
 header>*{position:relative;z-index:1}
-header{min-height:calc(108px + env(safe-area-inset-top));transition:min-height .3s ease}
-/* log screen: taller hero banner (takes the space the backup banner used to) */
-body.onLog header{min-height:calc(196px + env(safe-area-inset-top));align-items:flex-end;padding-bottom:42px}
-body.onLog header .headerBtn{align-self:flex-start}
-body.onLog h1{font-size:34px}
-/* big faint dumbbell logo inside the green */
-header>.headerLogo{
-  position:absolute;z-index:0;right:-26px;bottom:-22px;width:210px;height:210px;
-  opacity:.08;transition:width .3s,height .3s,opacity .3s;
-}
-body:not(.onLog) header>.headerLogo{width:130px;height:130px;right:-18px;bottom:-42px;opacity:.06}
+/* one compact header on every tab: the bar is as tall as the logo row */
+header>.headerLogo{position:absolute;z-index:0;right:-18px;bottom:-42px;width:130px;height:130px;opacity:.06}
 .headerText{display:flex;align-items:center;gap:12px;min-width:0}
-.brandMark{flex:none;width:44px;height:44px}
-body.onLog .brandMark{width:60px;height:60px}
+.brandMark{flex:none;width:46px;height:46px}
 /* backup reminder lives on the gear now */
 .headerBtn.needsBackup::after{
   content:"";position:absolute;top:7px;right:7px;width:11px;height:11px;border-radius:50%;
@@ -68,7 +58,6 @@ h2{color:var(--coffee-ink)}
 .brand{letter-spacing:-.03em}
 .brand span{color:#4cd88a}
 header p{margin:4px 0 0;color:#e9e0d6;font-size:13px;letter-spacing:.01em}
-body.onLog header p{font-size:15px}
 .headerBtn{
   background:#ffffff14;color:#fff;border:1px solid #ffffff2a;border-radius:14px;
   width:44px;height:44px;padding:0;font-size:20px;line-height:1;
@@ -546,7 +535,6 @@ dialog{max-height:90vh;overflow:auto}
   .setNum.pop{animation:none}
   .pulse{animation:none}
   .sessionBody,.chev::before{transition:none}
-  header,header>.headerLogo{transition:none}
   .wave{animation:none}
   .waterLevel{transition:none}
   .wBar i{transition:none}
