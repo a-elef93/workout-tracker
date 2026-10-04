@@ -236,6 +236,14 @@
   <button id="timerStop" aria-label="Σταμάτημα χρονομέτρου">✕</button>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="musicBar" class="musicBar" hidden>
+  <div class="mbProgress"><i id="mbProgress"></i></div>
+  <img id="mbCover" class="mbCover" alt="" width="40" height="40">
+  <div class="mbText"><b id="mbTitle"></b><span id="mbArtist"></span></div>
+  <button type="button" class="mbBtn" data-cmd="previous" aria-label="Προηγούμενο"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.4v14H6zM20 5v14L9.5 12z"/></svg></button>
+  <button type="button" class="mbBtn mbPlay" id="mbPlay" data-cmd="toggle" aria-label="Αναπαραγωγή"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="mbPlayIcon" d="M8 5v14l11-7z"/></svg></button>
+  <button type="button" class="mbBtn" data-cmd="next" aria-label="Επόμενο"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.6 5H18v14h-2.4zM4 5v14l10.5-7z"/></svg></button>
+</div>
 
 <dialog id="exerciseDialog">
   <form method="dialog" id="exerciseForm">
@@ -310,6 +318,11 @@
         <label>Νερό / μέρα (ml)<input id="goalWater" type="number" inputmode="numeric" min="500" max="8000" step="250"></label>
         <label>Στόχος βάρους (kg)<input id="goalWeight" type="text" inputmode="decimal" autocomplete="off" placeholder="π.χ. 78"></label>
       </div>
+    </div>
+
+    <div class="setGroup">
+      <h4>Μουσική</h4>
+      <div id="spotifyBox"></div>
     </div>
 
     <div class="setGroup">

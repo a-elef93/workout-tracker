@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Compact header on every tab, level with the logo, so the sets fit on screen.
+- Optional Spotify mini player above the tabs (cover, title, progress, ⏮ ⏯ ⏭) through the Spotify Web API with PKCE sign-in. It needs Premium and your own Spotify developer app (Settings → Music).
+
 ## v1.0.0 — 2026-10-02
 
 The first release of **GymPilot** (formerly *My Workout Tracker*). Workouts, steps and nutrition are now in one local-first app.
