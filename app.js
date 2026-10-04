@@ -1162,7 +1162,7 @@ function renderYear(){
   for(let w=0;w<52;w++){
     const ws=addDays(start,w*7),x=L+w*(S+G);
     if(parseDay(ws).getDate()<=7||w===0){const m=parseDay(addDays(ws,6)).toLocaleDateString('el-GR',{month:'short'});months+=`<text x="${x}" y="11" class="yrTxt">${m}</text>`}
-    for(let d=0;d<7;d++){const day=addDays(ws,d);if(day>t)continue;cells+=`<rect x="${x}" y="${T+d*(S+G)}" width="${S}" height="${S}" rx="3" class="yl${lvl(per[day])}" data-d="${day}"/>`}
+    for(let d=0;d<7;d++){const day=addDays(ws,d);if(day>t)continue;cells+=`<rect x="${x}" y="${T+d*(S+G)}" width="${S}" height="${S}" rx="3" class="yl${lvl(per[day])}"/>`}
   }
   const W=L+52*(S+G),H=T+7*(S+G);
   $('#yearGrid').innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Προπονήσεις 52 εβδομάδων">${months}<text x="0" y="${T+11}" class="yrTxt">Δευ</text><text x="0" y="${T+2*(S+G)+11}" class="yrTxt">Τετ</text><text x="0" y="${T+4*(S+G)+11}" class="yrTxt">Παρ</text>${cells}</svg>`;
@@ -1172,11 +1172,6 @@ function renderYear(){
   const topDay=Math.max(...wd)?['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'][wd.indexOf(Math.max(...wd))]:null;
   $('#yearStats').innerHTML=[`<b>${daysYear}</b> προπονήσεις μέσα στο ${year}`,`Καλύτερο σερί: <b>${bestWeekStreak()}</b> εβδομάδες με στόχο ${settings.goalWorkouts}×`,topDay?`Πιο συχνή μέρα: <b>${topDay}</b>`:''].filter(Boolean).map(x=>`<div>${x}</div>`).join('');
 }
-$('#yearGrid').onclick=e=>{
-  const c=e.target.closest('[data-d]');if(!c)return;
-  const d=c.dataset.d,ls=logs.filter(l=>l.date===d);
-  toast(ls.length?`${formatDate(d)} · ${ls.reduce((a,l)=>a+l.sets.length,0)} sets · ${[...new Set(ls.map(l=>l.group))].join(', ')}`:`${formatDate(d)} · ξεκούραση`);
-};
 
 /* ───── monthly Wrapped ───── */
 const LOADS=[{kg:150000,one:'φάλαινα',many:'φάλαινες'},{kg:12000,one:'λεωφορείο',many:'λεωφορεία'},{kg:6000,one:'ελέφαντας',many:'ελέφαντες'},{kg:1500,one:'αυτοκίνητο',many:'αυτοκίνητα'},{kg:400,one:'πιάνο',many:'πιάνα'}];
