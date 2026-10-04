@@ -33,6 +33,7 @@
   <section id="view-log" class="view">
 
     <section class="card accent" id="logCard">
+      <div id="readyHint" class="readyHint" hidden></div>
       <div class="row two">
         <label>Ημερομηνία<input id="date" type="date"></label>
         <label>Μυϊκή ομάδα<select id="group"></select></label>
@@ -106,6 +107,17 @@
 
   <!-- ───────── ΣΤΑΤΙΣΤΙΚΑ ───────── -->
   <section id="view-stats" class="view" hidden>
+    <section class="card recoveryCard">
+      <div class="sectionTitle"><h2>🗺️ Αποκατάσταση μυών</h2></div>
+      <div id="recoveryMap" class="recoveryMap"></div>
+      <div class="legend recLegend">
+        <span><i class="dot" style="background:#2fbf71"></i>Έτοιμο</span>
+        <span><i class="dot" style="background:#e0a336"></i>Σχεδόν</span>
+        <span><i class="dot" style="background:#e07a5f"></i>Ξεκουράζεται</span>
+      </div>
+      <div id="recoveryList" class="recoveryList"></div>
+    </section>
+
     <section class="card ringsCard">
       <div class="sectionTitle"><h2>Αυτή την εβδομάδα</h2></div>
       <div class="ringsWrap">
@@ -139,6 +151,25 @@
       <div id="reportBody" class="reportGrid"></div>
     </section>
 
+    <section class="card wrappedCard">
+      <div class="sectionTitle">
+        <h2>🎁 Wrapped</h2>
+        <button id="wrappedShare" class="small" type="button">Κοινοποίηση</button>
+      </div>
+      <div id="wrappedMonths" class="chips metric" role="group" aria-label="Μήνας">
+        <button class="chip on" data-m="0" style="--c:var(--brand)">Αυτός ο μήνας</button>
+        <button class="chip" data-m="-1" style="--c:var(--brand)">Προηγούμενος</button>
+      </div>
+      <div id="wrappedBody" class="wrappedBody"></div>
+    </section>
+
+    <section class="card yearCard">
+      <div class="sectionTitle"><h2>📅 Η χρονιά σου</h2><span class="sub">52 εβδομάδες</span></div>
+      <div id="yearScroll" class="yearScroll"><div id="yearGrid"></div></div>
+      <div class="yearLegend"><span>Λιγότερα</span><i class="yl0"></i><i class="yl1"></i><i class="yl2"></i><i class="yl3"></i><i class="yl4"></i><span>Περισσότερα</span></div>
+      <div id="yearStats" class="stepsInsight"></div>
+    </section>
+
     <div id="tiles" class="tiles"></div>
 
     <section class="card">
@@ -163,6 +194,11 @@
     <section class="card">
       <div class="sectionTitle"><h2>🏆 Προσωπικά records</h2></div>
       <div id="prList" class="prList"></div>
+    </section>
+
+    <section class="card badgeCard">
+      <div class="sectionTitle"><h2>🏅 Επιτεύγματα</h2><span id="badgeCount" class="sub"></span></div>
+      <div id="badgeGrid" class="badgeGrid"></div>
     </section>
   </section>
   <!-- ───────── ΔΙΑΤΡΟΦΗ ───────── -->
@@ -349,6 +385,18 @@
     <button type="button" id="addMealBtn" class="secondary wide">+ Γεύμα</button>
   </div>
   <div class="dialogBtns"><button type="button" data-plan-close>Έτοιμο</button></div>
+</dialog>
+
+<dialog id="wrappedDialog">
+  <div class="dialogHead">
+    <h3 id="wrappedDlgTitle">🎁 Wrapped</h3>
+    <button type="button" class="closeX" data-wd-close aria-label="Κλείσιμο">✕</button>
+  </div>
+  <p class="backupIntro">Η σύνοψη του μήνα σου είναι έτοιμη: προπονήσεις, records, τόνοι, νερό και βήματα.</p>
+  <div class="dialogBtns">
+    <button type="button" class="secondary" data-wd-close>Αργότερα</button>
+    <button type="button" id="wrappedOpen">Δες το</button>
+  </div>
 </dialog>
 
 <dialog id="backupDialog">
