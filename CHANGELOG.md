@@ -1,10 +1,19 @@
 # Changelog
 
-## Unreleased
-- Muscle recovery map in Stats, and "ready today" muscle groups on the Log screen.
-- A 52-week training heatmap with your best weekly streak and most common day.
-- Monthly Wrapped with a story-sized share image, shown on the first open of a new month.
-- 20 achievements with progress and a celebration when one unlocks.
+## v1.3.0 — 2026-10-04
+
+GymPilot now tells you what to train today, shows your year at a glance, sums up every month and rewards your milestones.
+
+### Recovery
+- **Muscle recovery map** in Stats: a front and back silhouette colours each muscle group green (ready), amber (almost) or red (still recovering), based on the time since you last trained it. A big session (12+ sets) needs an extra day.
+- **"Ready today"** on the Log screen: the rested muscle groups as chips, and one tap picks one.
+
+### Insights
+- **Your year**: a 52-week heatmap of sets per day, with workouts this year, your best weekly streak and your most common training day.
+- **Monthly Wrapped**: workouts, tonnes lifted (as cars, elephants or buses), favourite exercise, biggest record, heaviest set, water, steps and weight change. It appears on the first open of a new month and can be shared as a story-sized image.
+
+### Achievements
+- **20 badges**, including Club 100/150, 10 and 100 tonnes, 4- and 12-week streaks, early bird, night owl, 30 water days, 10,000 steps, weight goal and a clean eating week. Locked badges show progress bars, and a new unlock celebrates with confetti.
 
 ## v1.2.0 — 2026-10-04
 
