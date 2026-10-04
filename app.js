@@ -7,6 +7,10 @@ function load(key,fallback){try{const v=JSON.parse(localStorage.getItem(key));re
 let exercises=load('wt_exercises',null),logs=load('wt_logs',[]);
 if(!exercises||typeof exercises!=='object'||Array.isArray(exercises))exercises=defaults;
 if(!Array.isArray(logs))logs=[];
+let plan=load('wt_plan',null);   // dietitian plan: daily goals + meals (the file itself lives in IndexedDB)
+if(!plan||typeof plan!=='object'||!Array.isArray(plan.meals))plan={meals:[],kcalGoal:null,proteinGoal:null};
+let food=load('wt_food',{});   // {"2026-10-04":{meals:[{id,name,kcal,protein}],extras:[{t,label,kcal,protein}]}} — checked meals are snapshots, so editing the plan never rewrites past days
+if(!food||typeof food!=='object'||Array.isArray(food))food={};
 let weights=load('wt_weight',{});   // {"2026-10-02": 82.4} — one weigh-in per day
 if(!weights||typeof weights!=='object'||Array.isArray(weights))weights={};
 let water=load('wt_water',{});   // {"2026-10-02":[{t:1759400000000,ml:250},…]} — each drink, so any one can be undone
@@ -44,6 +48,8 @@ function persist(){
     localStorage.setItem('wt_steps',JSON.stringify(steps));
     localStorage.setItem('wt_water',JSON.stringify(water));
     localStorage.setItem('wt_weight',JSON.stringify(weights));
+    localStorage.setItem('wt_plan',JSON.stringify(plan));
+    localStorage.setItem('wt_food',JSON.stringify(food));
   }catch{toast('⚠️ Δεν αποθηκεύτηκε — ίσως γέμισε ο χώρος. Κάνε Export.')}
 }
 
@@ -462,6 +468,8 @@ function renderDonut(){
   $('#donut').innerHTML=`<div class="donut"><svg viewBox="0 0 120 120" role="img" aria-label="Κατανομή sets ανά μυϊκή ομάδα"><circle cx="60" cy="60" r="${r}" fill="none" stroke="#eef5ec" stroke-width="16"/>${arcs}</svg><div class="donutCenter"><b>${total}</b><span>sets</span></div></div><ul class="donutLegend">${rows.map(([g,n])=>`<li style="--c:${groupColor(g)}"><i></i><span>${escapeHtml(g)}</span><em>${n} · ${Math.round(n/total*100)}%</em></li>`).join('')}</ul>`;
 }
 
+// bodyweight around a date: the last weigh-in on or before it, else the first one after
+function bwAt(d){const ds=Object.keys(weights).sort();if(!ds.length)return null;const b=ds.filter(x=>x<=d);return weights[b.length?b[b.length-1]:ds[0]]}
 function renderRecords(){
   const map={};
   logs.forEach(l=>{
@@ -473,7 +481,11 @@ function renderRecords(){
     });
   });
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
-  $('#prList').innerHTML=rows.length?rows.map(r=>`<div class="pr" style="--c:${groupColor(r.group)}"><div class="prMain"><b>${escapeHtml(r.ex)}</b><span>${formatDate(r.date)}${r.e1?` · εκτ. 1RM ${fmt(Math.round(r.e1*2)/2)}kg`:''}</span></div><div class="prVal"><b>${setText({kg:r.kg,reps:r.reps})}</b></div></div>`).join(''):'<div class="empty">Τα records σου θα εμφανιστούν εδώ.</div>';
+  let anyBw=false;
+  $('#prList').innerHTML=rows.length?rows.map(r=>{
+    const bw=r.e1?bwAt(r.date):null;if(bw)anyBw=true;
+    return`<div class="pr" style="--c:${groupColor(r.group)}"><div class="prMain"><b>${escapeHtml(r.ex)}</b><span>${formatDate(r.date)}${r.e1?` · εκτ. 1RM ${fmt(Math.round(r.e1*2)/2)}kg`:''}</span></div><div class="prVal"><b>${setText({kg:r.kg,reps:r.reps})}</b>${bw?`<em class="bwx">${(r.e1/bw).toLocaleString('el-GR',{maximumFractionDigits:2})}× ΣΒ</em>`:''}</div></div>`;
+  }).join('')+(anyBw?'<p class="prNote">× ΣΒ = εκτιμώμενο 1RM προς το σωματικό σου βάρος εκείνη την περίοδο.</p>':''):'<div class="empty">Τα records σου θα εμφανιστούν εδώ.</div>';
 }
 /* ───── steps (Apple Health via a Shortcut, or typed in) ─────
    A web app can't read HealthKit, so a Shortcut named "WT Steps" copies
@@ -589,7 +601,7 @@ $('#stepsImport').onclick=()=>{
   stepsDlg.close();applySteps(found);
 };
 
-function renderStats(){renderRings();renderSteps();renderTiles();renderChart();renderDonut();renderRecords()}
+function renderStats(){renderRings();renderSteps();renderReport();renderTiles();renderChart();renderDonut();renderRecords()}
 
 /* ───── water: a bottle whose capacity is the daily goal and fills with every drink ───── */
 const fmtL=ml=>(ml/1000).toLocaleString('el-GR',{maximumFractionDigits:2});
@@ -731,7 +743,9 @@ function renderNutritionWeek(){
   const t=today(),ws=weekStart(t),g=settings.weightGoal,goalW=settings.goalWater;
   const week=w=>{
     const days=[...Array(7)].map((_,i)=>addDays(w,i)).filter(d=>d<=t),wd=days.filter(d=>d in weights);
-    return{w,days:days.length,water:days.filter(d=>dayWater(d)>=goalW).length,hasWater:days.some(d=>water[d]),weighIns:wd.length,avg:wd.length?wd.reduce((a,d)=>a+weights[d],0)/wd.length:null};
+    const pd=planDays(days),planned=plan.meals.length*pd.length;
+    return{w,days:days.length,pd:pd.length,water:days.filter(d=>dayWater(d)>=goalW).length,hasWater:days.some(d=>water[d]),weighIns:wd.length,avg:wd.length?wd.reduce((a,d)=>a+weights[d],0)/wd.length:null,
+      adherence:planned?pd.reduce((a,d)=>a+dayFood(d).meals.length,0)/planned:null,protDays:plan.proteinGoal&&pd.length?pd.filter(d=>dayTotals(d).protein>=plan.proteinGoal).length:null,hasFood:days.some(d=>food[d])};
   };
   const cur=week(ws),last=latestWeight(),p=goalProgress(last?.kg);
   $('#nutWeekRange').textContent=`${shortDate(ws)} – ${shortDate(addDays(ws,6))}`;
@@ -745,7 +759,7 @@ function renderNutritionWeek(){
   $('#nutRingLegend').innerHTML=items.map(i=>`<li style="--c:${i.color}"><i></i><b>${i.txt}</b><span>${i.label}</span></li>`).join('');
   // log: this week and up to 7 earlier weeks that have any data
   const rows=[];
-  for(let i=0;i<12&&rows.length<8;i++){const r=week(addDays(ws,-7*i));if(i===0||r.avg!=null||r.hasWater)rows.push(r)}
+  for(let i=0;i<12&&rows.length<8;i++){const r=week(addDays(ws,-7*i));if(i===0||r.avg!=null||r.hasWater||r.hasFood)rows.push(r)}
   rows.forEach((r,i)=>{const older=rows.slice(i+1).find(o=>o.avg!=null);r.delta=r.avg!=null&&older?r.avg-older.avg:null;r.olderAvg=older?.avg});
   const notes=[],now=rows[0];
   if(now.avg!=null&&now.delta!=null){
@@ -753,10 +767,220 @@ function renderNutritionWeek(){
     notes.push(`Μ.Ο. εβδομάδας <b>${fmtKg(now.avg)} kg</b> · ${deltaTxt(now.delta)} από την προηγούμενη${cls==='good'?' — <b>πλησιάζεις τον στόχο</b> 👍':cls==='bad'?' — απομακρύνεσαι από τον στόχο':''}`);
   }else if(!cur.weighIns)notes.push('Ζυγίσου 2–3 φορές την εβδομάδα, το πρωί μετά την τουαλέτα, για πιο σταθερό μέσο όρο.');
   if(p&&!p.reached)notes.push(`🎯 Απομένουν <b>${fmtKg(p.left)} kg</b> για τα ${fmtKg(p.goal)} kg`);
+  if(now.adherence!=null)notes.push(`🍽️ Τήρηση προγράμματος: <b>${Math.round(now.adherence*100)}%</b>${now.protDays!=null?` · πρωτεΐνη σε <b>${now.protDays}/${now.pd}</b> μέρες`:''}`);
   $('#nutWeekNote').innerHTML=notes.map(x=>`<div>${x}</div>`).join('');
-  $('#nutWeeks').innerHTML=rows.map((r,i)=>`<div class="weekRow"><div class="wr1"><b>${i===0?'Αυτή η εβδομάδα':`${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}`}</b>${i===0?`<span>${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}</span>`:''}</div><div class="wr2">${r.avg!=null?`${fmtKg(r.avg)} kg`:'—'}${r.delta!=null?`<span class="wDelta ${towardCls(r.avg,r.olderAvg)}">${deltaTxt(r.delta)}</span>`:''}</div><div class="wr3">💧 ${r.water}/${r.days}</div></div>`).join('');
+  $('#nutWeeks').innerHTML=rows.map((r,i)=>`<div class="weekRow"><div class="wr1"><b>${i===0?'Αυτή η εβδομάδα':`${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}`}</b>${i===0?`<span>${shortDate(r.w)} – ${shortDate(addDays(r.w,6))}</span>`:''}</div><div class="wr2">${r.avg!=null?`${fmtKg(r.avg)} kg`:'—'}${r.delta!=null?`<span class="wDelta ${towardCls(r.avg,r.olderAvg)}">${deltaTxt(r.delta)}</span>`:''}</div><div class="wr3"><span>💧 ${r.water}/${r.days}</span>${r.adherence!=null?`<span>🍽️ ${Math.round(r.adherence*100)}%</span>`:''}${r.protDays!=null?`<span>🥩 ${r.protDays}/${r.pd}</span>`:''}</div></div>`).join('');
 }
-function renderNutrition(){renderWeight();renderWater();renderNutritionWeek()}
+function renderNutrition(){renderFood();renderWeight();renderWater();renderNutritionWeek()}
+/* ───── nutrition plan: the dietitian's file, meals to check off, calories & protein vs target ───── */
+const fileDB=(()=>{
+  let dbp=null;
+  const open=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('gympilot',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+  const run=(mode,fn)=>open().then(db=>new Promise((res,rej)=>{const t=db.transaction('files',mode),q=fn(t.objectStore('files'));t.oncomplete=()=>res(q.result);t.onerror=()=>rej(t.error)}));
+  return{get:k=>run('readonly',st=>st.get(k)),put:(k,v)=>run('readwrite',st=>st.put(v,k)),del:k=>run('readwrite',st=>st.delete(k))};
+})();
+let planFile=null,planFileURL=null;   // {name,type,size,added,data:ArrayBuffer}; kept in memory so a backup can include it without waiting
+fileDB.get('plan').then(f=>{planFile=f||null;if(!$('#view-nutrition').hidden)renderFood()}).catch(()=>{});
+const fileURL=()=>planFile?(planFileURL||(planFileURL=URL.createObjectURL(new Blob([planFile.data],{type:planFile.type})))):null;
+const resetFileURL=()=>{if(planFileURL){URL.revokeObjectURL(planFileURL);planFileURL=null}};
+const bufToB64=buf=>{const b=new Uint8Array(buf);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(s)};
+const b64ToBuf=b64=>{const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
+
+const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return Number.isFinite(n)&&n>=0?n:null};
+const fmtN=n=>Math.round(n).toLocaleString('el-GR');
+const dayFood=d=>food[d]||{meals:[],extras:[]};
+// adherence only counts days since the plan was set up — days before it aren't "missed meals"
+const planDays=days=>plan.meals.length?days.filter(d=>!plan.since||d>=plan.since):[];
+function dayTotals(d){const f=dayFood(d),all=[...f.meals,...f.extras];return{kcal:all.reduce((a,x)=>a+(x.kcal||0),0),protein:all.reduce((a,x)=>a+(x.protein||0),0)}}
+const proteinSuggestion=()=>{const w=latestWeight();return w?Math.round(w.kg*1.8/5)*5:null};   // ~1.8 g per kg
+
+function miniRing(v,goal,color,label,unit){
+  const r=46,c=2*Math.PI*r,p=goal?Math.min(1,v/goal):0;
+  return`<div class="fRing"><div class="fRingSvg"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-opacity=".15" stroke-width="12"/>${p>0?`<circle class="ringArc" cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-p)}" style="--c:${c}" transform="rotate(-90 60 60)"/>`:''}</svg><div class="fRingTxt"><b>${fmtN(v)}</b><span>${goal?`/ ${fmtN(goal)}`:''} ${unit}</span></div></div><div class="fRingLbl">${label}${goal&&v>=goal?' ✓':''}</div></div>`;
+}
+function renderFood(){
+  const t=today(),f=dayFood(t),tot=dayTotals(t),doneIds=new Set(f.meals.map(m=>m.id));
+  $('#foodRings').innerHTML=miniRing(tot.kcal,plan.kcalGoal,'var(--coffee)','Θερμίδες','kcal')+miniRing(tot.protein,plan.proteinGoal,'var(--brand)','Πρωτεΐνη','g')
+    +(plan.kcalGoal||plan.proteinGoal?'':'<p class="foodHint">Βάλε στόχους θερμίδων και πρωτεΐνης στο <b>📄 Πρόγραμμα</b>.</p>');
+  $('#mealList').innerHTML=plan.meals.length
+    ?`<div class="mealHead">Γεύματα σήμερα · <b>${plan.meals.filter(m=>doneIds.has(m.id)).length}/${plan.meals.length}</b></div>`+plan.meals.map(m=>{
+      const done=doneIds.has(m.id),sub=[m.time,m.desc].filter(Boolean).map(escapeHtml).join(' · ');
+      return`<button type="button" class="meal${done?' done':''}" data-meal="${m.id}" aria-pressed="${done}"><span class="mCheck">✓</span><span class="mInfo"><b>${escapeHtml(m.name||'Γεύμα')}</b>${sub?`<small>${sub}</small>`:''}</span>${m.kcal||m.protein?`<span class="mMacro">${m.kcal?`${fmtN(m.kcal)} kcal`:''}${m.kcal&&m.protein?'<br>':''}${m.protein?`${fmtN(m.protein)} g πρωτ.`:''}</span>`:''}</button>`;
+    }).join('')
+    :'<div class="empty">Πρόσθεσε τα γεύματα του προγράμματός σου για να τα τσεκάρεις κάθε μέρα.</div><button type="button" class="secondary wide" data-open-plan>📄 Στήσε το πρόγραμμα</button>';
+  $('#extraLog').innerHTML=f.extras.slice().reverse().map(x=>`<span class="waterChip wChip">${escapeHtml(x.label||'Εκτός προγράμματος')}${x.kcal?` · ${fmtN(x.kcal)} kcal`:''}${x.protein?` · ${fmtN(x.protein)} g`:''}<button type="button" class="remove" data-x="${x.t}" aria-label="Αφαίρεση">✕</button></span>`).join('');
+}
+$('#mealList').onclick=e=>{
+  if(e.target.closest('[data-open-plan]'))return openPlan();
+  const b=e.target.closest('[data-meal]');if(!b)return;
+  const t=today(),m=plan.meals.find(x=>x.id===b.dataset.meal);if(!m)return;
+  const f=food[t]||(food[t]={meals:[],extras:[]}),i=f.meals.findIndex(x=>x.id===m.id);
+  if(i>=0)f.meals.splice(i,1);else f.meals.push({id:m.id,name:m.name,kcal:m.kcal||0,protein:m.protein||0});
+  if(!f.meals.length&&!f.extras.length)delete food[t];
+  persist();renderFood();renderNutritionWeek();
+  if(i>=0)return;
+  if(plan.meals.every(p=>(food[t]?.meals||[]).some(x=>x.id===p.id))){confetti();toast('🍽️ Όλα τα γεύματα της ημέρας! 💪')}
+  else toast(`✅ ${m.name||'Γεύμα'}`);
+};
+$('#extraForm').onsubmit=e=>{
+  e.preventDefault();
+  const kcal=num($('#extraKcal').value),protein=num($('#extraProt').value),label=$('#extraLabel').value.trim();
+  if(!kcal&&!protein)return toast('Βάλε θερμίδες ή πρωτεΐνη');
+  if((kcal||0)>5000||(protein||0)>400)return toast('Έλεγξε τις τιμές');
+  const t=today(),f=food[t]||(food[t]={meals:[],extras:[]});
+  f.extras.push({t:Date.now(),label,kcal:Math.round(kcal||0),protein:Math.round((protein||0)*10)/10});
+  persist();['#extraLabel','#extraKcal','#extraProt'].forEach(id=>$(id).value='');$('#extraFood').open=false;
+  renderFood();renderNutritionWeek();toast('➕ Προστέθηκε');
+};
+$('#extraLog').onclick=e=>{
+  const b=e.target.closest('[data-x]'),t=today(),f=food[t];if(!b||!f)return;
+  f.extras=f.extras.filter(x=>String(x.t)!==b.dataset.x);
+  if(!f.meals.length&&!f.extras.length)delete food[t];
+  persist();renderFood();renderNutritionWeek();
+};
+
+const planDlg=$('#planDialog');
+function openPlan(){
+  $('#planKcal').value=plan.kcalGoal??'';$('#planProt').value=plan.proteinGoal??'';
+  const sug=proteinSuggestion();
+  $('#protHint').textContent=sug
+    ?`Πρόταση πρωτεΐνης: ~${sug} g (1,8 g ανά κιλό, με βάρος ${fmtKg(latestWeight().kg)} kg). Αν ο διατροφολόγος σου έχει δώσει στόχο, βάλε εκείνον.`
+    :'Βάλε τους στόχους του διατροφολόγου σου. Με ένα ζύγισμα θα σου προτείνουμε και στόχο πρωτεΐνης.';
+  renderPlanFile();renderMealEditor();planDlg.showModal();
+}
+function closePlan(){
+  const k=num($('#planKcal').value),p=num($('#planProt').value);
+  plan.kcalGoal=k>=500&&k<=10000?Math.round(k):null;
+  plan.proteinGoal=p>=10&&p<=500?Math.round(p):null;
+  persist();planDlg.close();renderFood();renderNutritionWeek();
+}
+planDlg.querySelectorAll('[data-plan-close]').forEach(b=>b.onclick=closePlan);
+planDlg.addEventListener('cancel',e=>{e.preventDefault();closePlan()});   // Esc saves too
+$('#planBtn').onclick=openPlan;
+
+function renderMealEditor(){
+  $('#mealEditor').innerHTML=plan.meals.map(m=>`<div class="mealEdit" data-id="${m.id}">
+    <div class="row two"><label>Γεύμα<input data-f="name" value="${escapeHtml(m.name||'')}" placeholder="π.χ. Πρωινό" autocomplete="off"></label><label>Ώρα<input data-f="time" type="time" value="${escapeHtml(m.time||'')}"></label></div>
+    <label>Τι περιλαμβάνει<textarea data-f="desc" rows="2" placeholder="π.χ. 60g βρώμη, 2 αυγά, 1 μπανάνα">${escapeHtml(m.desc||'')}</textarea></label>
+    <div class="row two"><label>Θερμίδες<input data-f="kcal" inputmode="numeric" value="${m.kcal||''}" placeholder="kcal" autocomplete="off"></label><label>Πρωτεΐνη (g)<input data-f="protein" inputmode="decimal" value="${m.protein||''}" placeholder="g" autocomplete="off"></label></div>
+    <button type="button" class="dangerGhost" data-del-meal>Αφαίρεση γεύματος</button></div>`).join('')||'<div class="empty">Δεν έχεις γεύματα ακόμα.</div>';
+}
+$('#mealEditor').oninput=e=>{
+  const row=e.target.closest('[data-id]'),f=e.target.dataset.f;if(!row||!f)return;
+  const m=plan.meals.find(x=>x.id===row.dataset.id);if(!m)return;
+  m[f]=f==='kcal'||f==='protein'?(num(e.target.value)??0):e.target.value;
+  persist();
+};
+$('#mealEditor').onclick=e=>{
+  const b=e.target.closest('[data-del-meal]');if(!b)return;
+  const id=b.closest('[data-id]').dataset.id;plan.meals=plan.meals.filter(m=>m.id!==id);persist();renderMealEditor();
+};
+$('#addMealBtn').onclick=()=>{
+  const names=['Πρωινό','Δεκατιανό','Μεσημεριανό','Απογευματινό','Βραδινό'];
+  if(!plan.since)plan.since=today();
+  plan.meals.push({id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:names[plan.meals.length]||'',time:'',desc:'',kcal:0,protein:0});
+  persist();renderMealEditor();
+  const rows=$('#mealEditor').querySelectorAll('.mealEdit');rows[rows.length-1]?.scrollIntoView({block:'center'});
+};
+
+function renderPlanFile(){
+  const box=$('#planFileBox');
+  if(!planFile){box.innerHTML='<button type="button" class="secondary wide" data-file="add">📎 Ανέβασε PDF ή φωτογραφία</button><p class="backupHint">Το αρχείο μένει μόνο σε αυτό το κινητό (και στο backup σου).</p>';return}
+  const url=fileURL(),img=planFile.type.startsWith('image/');
+  box.innerHTML=`<div class="fileCard">${img?`<img src="${url}" alt="Πρόγραμμα διατροφής" class="planImg">`:`<iframe src="${url}" title="Πρόγραμμα διατροφής" class="planPdf"></iframe>`}
+    <div class="fileMeta"><b>${escapeHtml(planFile.name)}</b><span>${Math.max(1,Math.round(planFile.size/1024))} KB · ${formatDate(dayKey(new Date(planFile.added)))}</span></div>
+    <div class="fileBtns"><a class="btnLink" href="${url}" target="_blank" rel="noopener">Άνοιγμα</a><button type="button" class="secondary" data-file="add">Αλλαγή</button><button type="button" class="secondary" data-file="del">Αφαίρεση</button></div></div>`;
+}
+$('#planFileBox').onclick=async e=>{
+  const b=e.target.closest('[data-file]');if(!b)return;
+  if(b.dataset.file==='add')return $('#planFile').click();
+  if(!confirm('Να αφαιρεθεί το αρχείο του προγράμματος;'))return;
+  await fileDB.del('plan').catch(()=>{});planFile=null;resetFileURL();renderPlanFile();
+};
+async function savePlanFile(rec){await fileDB.put('plan',rec);planFile=rec;resetFileURL()}
+$('#planFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>15*1024*1024)return toast('Το αρχείο είναι πάνω από 15 MB');
+  try{await savePlanFile({name:f.name,type:f.type||'application/octet-stream',size:f.size,added:Date.now(),data:await f.arrayBuffer()});renderPlanFile();toast('📄 Το πρόγραμμα αποθηκεύτηκε')}
+  catch{toast('⚠️ Δεν αποθηκεύτηκε το αρχείο')}
+};
+
+/* ───── weekly report: training, steps, water, weight and food on one card, shareable as an image ───── */
+let reportOffset=0;
+function weekReport(off){
+  const t=today(),ws=addDays(weekStart(t),off*7),we=addDays(ws,6);
+  const days=[...Array(7)].map((_,i)=>addDays(ws,i)).filter(d=>d<=t),st=computeStatuses();
+  const wl=logs.filter(l=>l.date>=ws&&l.date<=we);
+  const sd=days.filter(d=>steps[d]!=null);
+  const wavg=ds=>{const w=ds.filter(d=>d in weights);return w.length?w.reduce((a,d)=>a+weights[d],0)/w.length:null};
+  const wAvg=wavg(days),wPrev=wavg([...Array(7)].map((_,i)=>addDays(ws,i-7)));
+  const pd=planDays(days),planned=plan.meals.length*pd.length;
+  return{ws,we,days:days.length,pd:pd.length,
+    workouts:new Set(wl.map(l=>l.date)).size,setsN:wl.reduce((a,l)=>a+l.sets.length,0),
+    vol:wl.filter(isWeighted).reduce((a,l)=>a+volume(l),0),recs:wl.filter(l=>st.get(l.id)?.cls==='record').length,
+    stepsAvg:sd.length?sd.reduce((a,d)=>a+steps[d],0)/sd.length:null,stepsMet:sd.filter(d=>steps[d]>=settings.goalSteps).length,stepsDays:sd.length,
+    waterMet:days.filter(d=>dayWater(d)>=settings.goalWater).length,waterAny:days.some(d=>water[d]),
+    wAvg,wPrev,wDelta:wAvg!=null&&wPrev!=null?wAvg-wPrev:null,
+    adherence:planned?pd.reduce((a,d)=>a+dayFood(d).meals.length,0)/planned:null,
+    protDays:plan.proteinGoal&&pd.length?pd.filter(d=>dayTotals(d).protein>=plan.proteinGoal).length:null};
+}
+function reportTiles(r){
+  const vol=r.vol>=1000?`${fmt(r.vol/1000)} t`:`${fmt(r.vol)} kg`;
+  return[
+    {i:'🏋️',v:`${r.workouts}`,l:'Προπονήσεις',s:r.workouts?`${r.setsN} sets · ${vol}`:'καμία ακόμα'},
+    {i:'🏆',v:`${r.recs}`,l:'Νέα records',s:r.recs?'συνέχισε έτσι':'—'},
+    {i:'👣',v:r.stepsAvg!=null?fmtN(r.stepsAvg):'—',l:'Βήματα / μέρα',s:r.stepsDays?`στόχος ${r.stepsMet}/${r.stepsDays} μέρες`:'χωρίς δεδομένα'},
+    {i:'💧',v:`${r.waterMet}/${r.days}`,l:'Μέρες στόχου νερού',s:r.waterAny?`στόχος ${fmtL(settings.goalWater)} L`:'χωρίς καταγραφές'},
+    {i:'⚖️',v:r.wAvg!=null?`${fmtKg(r.wAvg)} kg`:'—',l:'Μ.Ο. βάρους',s:r.wDelta!=null?`${deltaTxt(r.wDelta)} από την προηγ.`:'χωρίς σύγκριση',cls:r.wDelta!=null?towardCls(r.wAvg,r.wPrev):''},
+    {i:'🍽️',v:r.adherence!=null?`${Math.round(r.adherence*100)}%`:'—',l:'Τήρηση προγράμματος',s:r.protDays!=null?`πρωτεΐνη ${r.protDays}/${r.pd} μέρες`:r.adherence!=null?'γεύματα που τσέκαρες':'χωρίς πρόγραμμα'},
+  ];
+}
+function renderReport(){
+  const r=weekReport(reportOffset);
+  document.querySelectorAll('#reportWeeks .chip').forEach(b=>b.classList.toggle('on',Number(b.dataset.w)===reportOffset));
+  $('#reportRange').textContent=`${shortDate(r.ws)} – ${shortDate(r.we)}`;
+  $('#reportBody').innerHTML=reportTiles(r).map(x=>`<div class="rTile ${x.cls||''}"><span class="rIcon">${x.i}</span><b>${x.v}</b><span class="rLbl">${x.l}</span><small>${x.s}</small></div>`).join('');
+}
+$('#reportWeeks').onclick=e=>{const b=e.target.closest('[data-w]');if(!b)return;reportOffset=Number(b.dataset.w);renderReport()};
+
+const MARK={ring:'M78 54A32 32 0 1 1 64.35 27.79',bar:'M70 54H78',arrow:'M86 16 39.3 37.3 58 44 64.7 62.7Z',f1:'M86 16 39.3 37.3 58 44Z',f2:'M86 16 58 44 64.7 62.7Z'};
+function reportImage(r){
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d'),font=(w,s)=>`${w} ${s}px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif`;
+  const box=(x,y,w,h,r)=>{g.beginPath();g.roundRect?g.roundRect(x,y,w,h,r):g.rect(x,y,w,h)};
+  g.fillStyle='#f4f8f2';g.fillRect(0,0,W,H);
+  const hg=g.createLinearGradient(0,0,W,360);hg.addColorStop(0,'#24180f');hg.addColorStop(.6,'#3a2719');hg.addColorStop(1,'#4a3322');
+  g.fillStyle=hg;box(0,-60,W,420,60);g.fill();
+  const glow=g.createRadialGradient(W*.88,0,0,W*.88,0,520);glow.addColorStop(0,'rgba(34,165,95,.33)');glow.addColorStop(1,'rgba(34,165,95,0)');
+  g.save();box(0,-60,W,420,60);g.clip();g.fillStyle=glow;g.fillRect(0,0,W,360);g.restore();
+  g.save();g.translate(56,64);g.scale(1.55,1.55);g.lineCap='round';g.lineJoin='round';
+  g.strokeStyle='#fff';g.lineWidth=13;g.stroke(new Path2D(MARK.ring));g.stroke(new Path2D(MARK.bar));
+  g.strokeStyle='#2c1e14';g.lineWidth=6;g.stroke(new Path2D(MARK.arrow));
+  g.fillStyle='#5fe39a';g.fill(new Path2D(MARK.f1));g.fillStyle='#22a55f';g.fill(new Path2D(MARK.f2));g.restore();
+  g.font=font(800,72);g.fillStyle='#fff';g.fillText('Gym',230,150);
+  const gw=g.measureText('Gym').width;g.fillStyle='#4cd88a';g.fillText('Pilot',230+gw,150);
+  g.font=font(600,34);g.fillStyle='#e9e0d6';g.fillText('Lift. Push. Progress.',232,198);
+  g.font=font(800,52);g.fillStyle='#fff';g.fillText('Η εβδομάδα μου',64,300);
+  g.font=font(600,34);g.fillStyle='#e9e0d6';g.textAlign='right';g.fillText(`${shortDate(r.ws)} – ${shortDate(r.we)}`,W-64,300);g.textAlign='left';
+  const tw=(W-128-32)/2,th=250;
+  reportTiles(r).forEach((x,i)=>{
+    const tx=64+(i%2)*(tw+32),ty=392+Math.floor(i/2)*(th+32);
+    g.fillStyle='#fff';box(tx,ty,tw,th,36);g.fill();g.strokeStyle='#dde9da';g.lineWidth=2;g.stroke();
+    g.font=font(400,50);g.fillText(x.i,tx+34,ty+78);
+    g.fillStyle=x.cls==='good'?'#15803d':x.cls==='bad'?'#94600f':'#1f2a22';g.font=font(800,x.v.length>7?62:74);g.fillText(x.v,tx+34,ty+160);
+    g.fillStyle='#5c3b24';g.font=font(700,31);g.fillText(x.l,tx+34,ty+202);
+    g.fillStyle='#6b776c';g.font=font(600,26);g.fillText(x.s,tx+34,ty+236);
+  });
+  g.fillStyle='#6b776c';g.font=font(600,28);g.textAlign='center';g.fillText('Χωρίς λογαριασμό · τα δεδομένα μένουν στο κινητό',W/2,H-44);
+  return c;
+}
+// built and shared straight from the tap (no awaits before share), so iOS allows the share sheet
+$('#reportShare').onclick=()=>{
+  const url=reportImage(weekReport(reportOffset)).toDataURL('image/png'),file=new File([b64ToBuf(url.split(',')[1])],'GymPilot-week.png',{type:'image/png'});
+  if(navigator.canShare?.({files:[file]}))navigator.share({files:[file],title:'Η εβδομάδα μου στο GymPilot'}).catch(()=>{});
+  else{const a=document.createElement('a');a.href=url;a.download=file.name;a.click()}
+};
+
 
 /* ───── Spotify mini player (optional) ─────
    Talks to the Spotify Web API, which controls whatever is playing on your account — including the
@@ -889,9 +1113,9 @@ async function openSettings(){
   $('#goalWorkouts').value=settings.goalWorkouts;$('#goalSets').value=settings.goalSets;$('#goalSteps').value=settings.goalSteps;$('#goalWater').value=settings.goalWater;$('#goalWeight').value=settings.weightGoal==null?'':fmtKg(settings.weightGoal);
   renderSpotifySettings();
   settingsDlg.showModal();
-  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water','wt_weight'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
+  const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water','wt_weight','wt_plan','wt_food'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
-  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ${Object.keys(weights).length} ζυγίσματα · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
+  $('#storageInfo').innerHTML=`📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ${Object.keys(weights).length} ζυγίσματα · ${Object.keys(food).length} μέρες διατροφής · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`;
 }
 $('#settingsBtn').onclick=openSettings;
 $('#settingsClose').onclick=()=>{saveSettings();settingsDlg.close()};
@@ -922,7 +1146,8 @@ function checkBackup(){
     :'Σώζει όλα σου τα δεδομένα σε ένα αρχείο. Σώσ’ το στο iCloud Drive, στον ίδιο φάκελο κάθε φορά, και το νέο αντικαθιστά το παλιό.';
 }
 async function exportData(){
-  const json=JSON.stringify({version:5,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,settings},null,2);
+  const pf=planFile&&planFile.size<=8*1024*1024?{name:planFile.name,type:planFile.type,size:planFile.size,added:planFile.added,b64:bufToB64(planFile.data)}:null;   // in memory already: no await before share
+  const json=JSON.stringify({version:6,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,plan,food,planFile:pf,settings},null,2);
   const file=new File([json],'GymPilot-backup.json',{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
@@ -959,17 +1184,29 @@ $('#importFile').onchange=async e=>{
     const newWeights={};
     if(d.weights&&typeof d.weights==='object'&&!Array.isArray(d.weights))Object.entries(d.weights).forEach(([k,v])=>{const kg=parseKg(v);if(validDay(k)&&!(k in weights)&&kg>=25&&kg<=350)newWeights[k]=kg});
     const kn=Object.keys(newWeights).length;
-    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}${wn?` και ${wn} μέρες νερού`:''}${kn?` και ${kn} ζυγίσματα`:''}. Συγχώνευση με τις υπάρχουσες;`))return;
-    logs.push(...fresh);Object.assign(steps,newSteps);Object.assign(water,newWater);Object.assign(weights,newWeights);
+    const newFood={},snap=x=>({id:String(x?.id||''),name:String(x?.name||''),kcal:num(x?.kcal)||0,protein:num(x?.protein)||0});
+    if(d.food&&typeof d.food==='object'&&!Array.isArray(d.food))Object.entries(d.food).forEach(([k,v])=>{
+      if(!validDay(k)||k in food||!v)return;
+      const meals=Array.isArray(v.meals)?v.meals.map(snap).filter(m=>m.id):[],extras=Array.isArray(v.extras)?v.extras.map(x=>({t:Number(x?.t)||0,label:String(x?.label||''),kcal:num(x?.kcal)||0,protein:num(x?.protein)||0})):[];
+      if(meals.length||extras.length)newFood[k]={meals,extras};
+    });
+    const fn=Object.keys(newFood).length;
+    // the plan only comes in if this phone doesn't have one yet
+    const takePlan=!plan.meals.length&&!plan.kcalGoal&&!plan.proteinGoal&&d.plan&&Array.isArray(d.plan.meals);
+    const takeFile=!planFile&&d.planFile?.b64;
+    if(!confirm(`Βρέθηκαν ${fresh.length} νέες καταγραφές (από ${d.logs.length} στο αρχείο)${sn?` και ${sn} μέρες βημάτων`:''}${wn?` και ${wn} μέρες νερού`:''}${kn?` και ${kn} ζυγίσματα`:''}${fn?` και ${fn} μέρες διατροφής`:''}${takePlan||takeFile?' και το πρόγραμμα διατροφής':''}. Συγχώνευση με τις υπάρχουσες;`))return;
+    logs.push(...fresh);Object.assign(steps,newSteps);Object.assign(water,newWater);Object.assign(weights,newWeights);Object.assign(food,newFood);
+    if(takePlan)plan={meals:d.plan.meals.map(m=>({id:String(m.id||'m'+Math.random().toString(36).slice(2)),name:String(m.name||''),time:String(m.time||''),desc:String(m.desc||''),kcal:num(m.kcal)||0,protein:num(m.protein)||0})),kcalGoal:num(d.plan.kcalGoal),proteinGoal:num(d.plan.proteinGoal),since:validDay(d.plan.since)?d.plan.since:today()};
+    if(takeFile)savePlanFile({name:String(d.planFile.name||'πρόγραμμα'),type:String(d.planFile.type||'application/pdf'),size:Number(d.planFile.size)||0,added:Number(d.planFile.added)||Date.now(),data:b64ToBuf(d.planFile.b64)}).catch(()=>{});
     Object.entries(d.exercises||{}).forEach(([g,list])=>{if(Array.isArray(list))exercises[g]=[...new Set([...(exercises[g]||[]),...list.map(String)])]});
     fresh.forEach(l=>{const list=exercises[l.group]||(exercises[l.group]=[]);if(!list.includes(l.exercise))list.push(l.exercise)});
-    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}${wn?` · ${wn} μέρες νερού`:''}${kn?` · ${kn} ζυγίσματα`:''}`);
+    persist();fillGroups(group.value);renderHistory();checkBackup();toast(`✅ Προστέθηκαν ${fresh.length} καταγραφές${sn?` · ${sn} μέρες βημάτων`:''}${wn?` · ${wn} μέρες νερού`:''}${kn?` · ${kn} ζυγίσματα`:''}${fn?` · ${fn} μέρες διατροφής`:''}${takePlan||takeFile?' · πρόγραμμα διατροφής':''}`);if(!$('#view-nutrition').hidden)renderNutrition();
   }catch{alert('Το αρχείο δεν φαίνεται να είναι σωστό backup.')}
 };
 
 $('#clearBtn').onclick=()=>{
-  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις, βήματα, νερό και ζυγίσματα); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
-  logs=[];steps={};water={};weights={};persist();if(!$('#view-nutrition').hidden)renderNutrition();settingsDlg.close();resetForm();renderHistory();checkBackup();
+  if(!confirm('Να διαγραφεί ΟΛΟ το ιστορικό (προπονήσεις, βήματα, νερό, ζυγίσματα και γεύματα — το πρόγραμμα μένει); Αυτό δεν αναιρείται (κάνε πρώτα Export αν θες backup).'))return;
+  logs=[];steps={};water={};weights={};food={};persist();if(!$('#view-nutrition').hidden)renderNutrition();settingsDlg.close();resetForm();renderHistory();checkBackup();
 };
 
 /* ───── init ───── */
