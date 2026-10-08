@@ -9,30 +9,46 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 
 <p align="center"><a href="https://a-elef93.github.io/workout-tracker/"><b>Open the app →</b></a></p>
 
-> The interface is in Greek. No account, no server: everything is stored on your device.
+> Greek and English, light and dark. No account, no server: everything is stored on your device.
 
 ---
 
 ## Features
 
+### 🗓️ Workout plan & home
+- **Weekly plan**: pick the muscle groups (and optionally exercises with sets × reps) for each day, start from a ready-made plan (Push/Pull/Legs, Upper/Lower, one group a day, Full body 3×), or **import** your coach's plan by pasting text or picking a `.txt`/`.json` file:
+  ```
+  Δευτέρα: Στήθος, Τρικέφαλα
+  - Bench Press 4x8
+  Τρίτη: Πλάτη, Ραχιαίοι, Δικέφαλα
+  Τετάρτη: Ξεκούραση
+  ```
+  Greek or English day and muscle names both work, as do "Push", "Pull", "Upper", "Lower" and "Full body".
+- **Today card** on top of the Log screen: today's groups and exercises (ticked off as you log them), **"Tomorrow: Back · Biceps"**, a week strip with the plan and the days you trained, the coach's top note and a month calendar.
+- **Start** picks the group and its next planned exercise; after every save the form moves on to the next exercise of the plan.
+
 ### 🏋️ Training log
-- Log sets (kg × reps) per exercise, organised by muscle group, with your own exercises on top of the defaults.
+- Log sets (kg × reps) per exercise with the **date and time** of the workout, organised by muscle group (including **Lats**), with your own exercises on top of the defaults.
 - **Ghost values**: last session's numbers appear faintly in every field, so you always know what to beat.
 - **Steppers**: −/+ next to every field (±2.5 kg, ±1 rep). Hold to repeat. An empty field starts from the ghost value.
 - **Live record feedback** while you type: a box under the sets turns into *🏆 New record · +2.5kg* or *▼ Down · −5kg · record 70kg* before you save, and the record set gets a ✓.
 - "+ Set" copies the last filled row and "− Set" removes the last one. There's also a progression hint, edit/delete, and confetti when you save a record.
-- Rest timer (1:00–3:00, +30″) that stays on screen and beeps/vibrates when it's done.
+- **Rest timer** (1:00–3:00, +30″) that can start by itself after every save. The chime asks iOS for a *transient* audio session, so music (Spotify, Apple Music) **ducks** for a moment and you hear it over your playlist.
 
 ### 📒 History
-- One box per workout (same day and muscle group) with totals: exercises, sets, volume and records.
+- One box per workout (same day and muscle group) with totals: exercises, sets, volume, records, the **time** and the **calories** of the workout.
 - Boxes collapse: the latest workout starts open and older ones start closed.
 - Each exercise is badged as record / up / down / same against the previous session, with a filter by muscle group.
 
 ### 📊 Stats
+- **Pilot Coach (plateau detector)**: reads your logs on the phone and flags exercises stuck for 3+ sessions (by estimated 1RM), drops of 5%+, muscle groups you haven't trained in two weeks, push/pull imbalance and volume swings, each with a concrete fix (add weight, change rep range, deload to ~90%, or swap the exercise).
+- **Progress Every Time**: every set of an exercise as a dot, weight in amber and reps in green, for the last 2 sessions or all of them; *Stats* switches to the top set / estimated 1RM / volume chart.
+- **Stay consistent**: the last months as day grids with your training days in green.
+- **Workout calories**: MET 5 × your weight × the workout's length (first to last save, or ~2.5 min per set), on every workout, the week, the report and Wrapped.
 - **Muscle recovery map**: a front and back body silhouette colours each muscle group by how rested it is since you last trained it (bigger sessions need longer). The Log screen suggests the groups that are ready today, and one tap picks one.
 - **Your year**: a 52-week heatmap of sets per day, plus your best weekly streak and most common training day.
 - **Monthly Wrapped**: your favourite exercise, biggest record, heaviest set, tonnes lifted (as many cars, elephants or buses), water and steps for the month. It shows up on the first open of a new month and can be shared as a story-sized image.
-- **Achievements**: 20 badges (Club 100, 10 tonnes, 12-week streak, early bird, 30 water days and more) with progress bars. They're worked out from your data, so nothing is lost if you restore a backup.
+- **Achievements**: 25 badges (Club 100, 10 tonnes, 5,000 kcal, Wings for lats, plan keeper, 12-week streak and more). Their own section: tap any badge to see what it means, how to unlock it and how close you are. They're worked out from your data, so nothing is lost if you restore a backup.
 - Weekly rings for workouts, sets and muscle groups, plus a week strip.
 - Tiles: weekly streak, total workouts, total volume, records.
 - Progress chart per exercise: top set, estimated 1RM (Epley) or volume.
@@ -47,12 +63,12 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 - **Weigh-ins**: one per day, with the change since the last weigh-in, a weight goal, progress measured from the weight you had when you set the goal, and a 90-day chart.
 - **Weekly summary**: rings for water-goal days, weigh-ins and goal progress, plus a weekly log of average weight, change vs the previous week (toward or away from the goal), water days, plan adherence and protein days.
 
-### 🎵 Music (optional)
-- A Spotify mini player sits above the tabs while music plays: cover, title, a progress line and ⏮ ⏯ ⏭, so you don't leave the workout.
-- It works through the Spotify Web API, signing in with Spotify via PKCE straight from the page, with no server and no secret. It needs **Spotify Premium** and your own Spotify developer app (Settings → Music walks you through it). Spotify currently limits these apps to 5 allow-listed users and asks you to sign in again every 6 months.
+### 🌍 Language & theme
+- **Greek and English**: follows the phone on a new install; switch any time in Settings.
+- **Dark mode**: automatic with the phone, or forced light/dark in Settings.
 
 ## Your data
-- Everything lives in the browser's `localStorage` on your phone: no account, no backend, no analytics. The optional Spotify sign-in is only for music; its tokens stay on the device and are never included in backups.
+- Everything lives in the browser's `localStorage` on your phone: no account, no login, no backend, no analytics.
 - **Weekly backup**: on the first open after 7 days, a small prompt offers a one-tap backup through the share sheet. The file is always called `GymPilot-backup.json`, so saving it to the same iCloud Drive folder replaces the old one. No server is involved. Backup and restore are also in Settings (⚙️), and restoring merges with what's already there.
 - Data belongs to the address the app is opened from. If you move to another URL, back up first and restore there.
 
@@ -81,12 +97,21 @@ Then tap **↻ Συγχρονισμός** (Sync) on the Steps card in Stats. Aft
 - Hosted on **GitHub Pages**.
 
 ```
-index.html      markup for all four tabs and the dialogs
-style.css       theme (green + coffee on a light background) and components
-app.js          all app logic: logging, history, stats, steps, nutrition, weigh-ins, reports, backup
-sw.js           service worker (offline + updates)
-manifest.json   install metadata
-icon*.png/svg   app icons
+index.html        markup for all four tabs and the dialogs (Greek text, English in data-en attributes)
+style.css         light and dark themes (green + coffee) and components
+js/i18n.js        language and theme, loaded first
+js/core.js        data, helpers, metrics, calories, Pilot Coach
+js/plan.js        workout plan, import, the Today card, month calendars
+js/log.js         log form, steppers, live feedback, rest timer
+js/history.js     history boxes
+js/stats.js       coach, recovery, rings, Progress Every Time, Stay consistent, records, year
+js/reports.js     steps, weekly report, Wrapped, achievements
+js/nutrition.js   water, weigh-ins, dietitian's plan
+js/settings.js    tabs, settings, backup & restore, start-up
+sw.js             service worker (offline + updates)
+manifest.json     install metadata
+icon*.png/svg     app icons
+ANDROID-LAUNCH.md how to put GymPilot on Google Play
 ```
 
 ## Run locally
@@ -99,7 +124,7 @@ python3 -m http.server 8000
 Then open <http://localhost:8000>. After changing files, bump `CACHE` in `sw.js` so installed copies pick up the new version.
 
 ## Roadmap
-- Workout templates (Push / Pull / Legs) and a session mode
-- Native wrapper for automatic Apple Health sync
+- Google Play release as a Trusted Web Activity: see [ANDROID-LAUNCH.md](ANDROID-LAUNCH.md)
+- Native app (Expo, in progress) for Apple Health / Health Connect and rest notifications with the screen locked
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
