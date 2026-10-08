@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.4.0 — 2026-10-08
+
+A plan for the week, a coach that spots plateaus, English, dark mode, and charts you can read at a glance.
+
+### Plan
+- **Workout plan**: muscle groups (and exercises with sets × reps) for each weekday. Ready-made Push/Pull/Legs, Upper/Lower, one group a day and Full body 3×, or **import** your coach's plan from text or a file, in Greek or English.
+- **Today card** on the Log screen: today's workout, **tomorrow's** ("Tomorrow: Back · Biceps"), a week strip and a month calendar. *Start* picks the group and the next planned exercise, and every save moves on to the next one.
+
+### Training
+- **Workout time** next to the date, shown in History.
+- New muscle group: **Lats**, also on the recovery map.
+- **Rest timer** can start by itself after each save, and its chime now ducks your music so you hear it.
+- **Workout calories** on every workout, the week, the weekly report and Wrapped.
+
+### Insights
+- **Pilot Coach**: plateau and drop detection per exercise with a concrete fix, neglected muscle groups, push/pull balance and volume swings. The tip also shows under the exercise while you log.
+- **Progress Every Time**: every set as a step, weight and reps, last 2 sessions or all.
+- **Stay consistent**: months of training days at a glance.
+- **Achievements** get their own section: 25 badges, tap one to see what it means and how to unlock it.
+
+### App
+- **English** version and **dark mode** (both in Settings).
+- **Spotify removed**: its tokens are cleared from the phone.
+- Home-screen shortcuts to Log, Stats and Nutrition; backups now include the workout plan.
+
 ## v1.3.0 — 2026-10-04
 
 GymPilot now tells you what to train today, shows your year at a glance, sums up every month and rewards your milestones.
