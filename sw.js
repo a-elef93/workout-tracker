@@ -1,5 +1,5 @@
-const CACHE='gympilot-v22';
-const ASSETS=['./','./index.html','./style.css','./app.js','./manifest.json','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
+const CACHE='gympilot-v23';
+const ASSETS=['./','./index.html','./style.css','./js/i18n.js','./js/core.js','./js/plan.js','./js/log.js','./js/history.js','./js/stats.js','./js/reports.js','./js/nutrition.js','./js/settings.js','./manifest.json','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>Promise.all(ASSETS.map(a=>fetch(a,{cache:'no-cache'}).then(r=>cache.put(a,r))))))});
 self.addEventListener('activate',event=>{event.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()]))});
 // Network first, but always revalidate our own files with the server: GitHub Pages lets browsers
