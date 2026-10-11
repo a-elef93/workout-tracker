@@ -32,7 +32,8 @@ function applySteps(found){
 }
 async function syncSteps(){
   let text='';
-  try{text=await navigator.clipboard.readText()}catch{}
+  if(NATIVE)text=(await nativeAsk('clipboard'))||'';
+  else try{text=await navigator.clipboard.readText()}catch{}
   const fresh=text.includes(STEPS_MARKER)&&textHash(text)!==settings.stepsLastClip;   // same text as last time = stale
   if(fresh){
     const found=parseSteps(text);
@@ -40,7 +41,11 @@ async function syncSteps(){
     openStepsDialog(true);$('#stepsPaste').value=text;
     return toast(L('⚠️ Το Shortcut έδωσε κείμενο χωρίς βήματα — δες τη μορφή','⚠️ The Shortcut gave text without steps — check the format'));
   }
-  if(isIOS&&settings.stepsShortcut){awaitingShortcut=true;location.href='shortcuts://run-shortcut?name='+encodeURIComponent(STEPS_SHORTCUT);return}
+  if(isIOS&&settings.stepsShortcut){
+    awaitingShortcut=true;const url='shortcuts://run-shortcut?name='+encodeURIComponent(STEPS_SHORTCUT);
+    if(NATIVE)nativeSend({type:'openUrl',url});else location.href=url;
+    return;
+  }
   openStepsDialog(!settings.stepsShortcut);
 }
 function stepsChart(days,goal,gymDays,t){
@@ -183,7 +188,9 @@ function reportImage(r){
 const b64ToBuf=b64=>{const s=atob(b64),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
 function shareCanvas(canvas,name,title){
   // built and shared straight from the tap (no awaits before share), so iOS allows the share sheet
-  const url=canvas.toDataURL('image/png'),file=new File([b64ToBuf(url.split(',')[1])],name,{type:'image/png'});
+  const url=canvas.toDataURL('image/png');
+  if(NATIVE)return nativeSend({type:'shareFile',name,mime:'image/png',base64:url.split(',')[1]});
+  const file=new File([b64ToBuf(url.split(',')[1])],name,{type:'image/png'});
   if(navigator.canShare?.({files:[file]}))navigator.share({files:[file],title}).catch(()=>{});
   else{const a=document.createElement('a');a.href=url;a.download=name;a.click()}
 }
@@ -266,7 +273,7 @@ function maybeShowWrapped(){
   wrappedDlg.showModal();
 }
 wrappedDlg.querySelectorAll('[data-wd-close]').forEach(b=>b.onclick=()=>wrappedDlg.close());
-$('#wrappedOpen').onclick=()=>{wrappedDlg.close();wrappedOffset=-1;switchTab('stats');setTimeout(()=>document.querySelector('.wrappedCard').scrollIntoView({behavior:'smooth',block:'start'}),60)};
+$('#wrappedOpen').onclick=()=>{wrappedDlg.close();wrappedOffset=-1;showStats('reports','.wrappedCard')};
 
 /* ───── achievements: worked out from your data; the unlock day is remembered ───── */
 const B=(id,i,goal,v,el,en,unit)=>({id,i,goal,v,el,en,unit});
@@ -327,7 +334,7 @@ function checkBadges(silent){
   if(!fresh.length)return;
   fresh.forEach(b=>badges[b.id]=today());
   try{localStorage.setItem('wt_badges',JSON.stringify(badges))}catch{}
-  if(!$('#view-stats').hidden)renderBadges();
+  if(!$('#view-stats').hidden&&statsSeg==='overview')renderBadges();
   if(silent)return;
   confetti();toast(fresh.length===1?`🏅 ${L('Νέο επίτευγμα','New achievement')}: ${fresh[0].i} ${bText(fresh[0]).t}`:L(`🏅 ${fresh.length} νέα επιτεύγματα!`,`🏅 ${fresh.length} new achievements!`));
 }

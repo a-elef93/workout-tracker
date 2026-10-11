@@ -172,7 +172,7 @@ $('#saveBtn').onclick=()=>{
   const nextEx=!wasEdit&&entry.date===today()?nextPlannedExercise(entry.group):null;
   if(nextEx)fillExercises(nextEx);
   resetForm();renderHistory();checkBackup();renderReadyHint();renderHome();
-  if(st.cls==='record'){confetti();navigator.vibrate?.([40,60,40,60,120]);toast(`${badgeText(st)} · ${entry.exercise}`)}
+  if(st.cls==='record'){confetti();buzz([40,60,40,60,120]);toast(`${badgeText(st)} · ${entry.exercise}`)}
   else toast(wasEdit?L('✅ Ενημερώθηκε','✅ Updated'):`✅ ${L('Αποθηκεύτηκε','Saved')} · ${badgeText(st)}${nextEx?` → ${nextEx}`:''}`);
   if(!wasEdit&&settings.restAuto)startTimer(settings.restDefault);
 };
@@ -207,9 +207,10 @@ function startTimer(sec){
   timerTotal=sec;timerEnd=Date.now()+sec*1000;
   clearInterval(timerInt);timerInt=setInterval(tickTimer,250);
   $('#timerPill').hidden=false;tickTimer();
+  nativeRest();
   document.querySelectorAll('.timerChip').forEach(b=>b.classList.toggle('on',Number(b.dataset.sec)===sec));
 }
-function stopTimer(){clearInterval(timerInt);timerInt=null;timerEnd=0;$('#timerPill').hidden=true;document.querySelectorAll('.timerChip').forEach(b=>b.classList.remove('on'))}
+function stopTimer(ended){if(!ended)nativeSend({type:'restStop'});clearInterval(timerInt);timerInt=null;timerEnd=0;$('#timerPill').hidden=true;document.querySelectorAll('.timerChip').forEach(b=>b.classList.remove('on'))}
 function tickTimer(){
   if(!timerEnd)return;
   const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
@@ -218,13 +219,20 @@ function tickTimer(){
   if(!left){
     // back from the background long after it ended: no chime, just clear it
     const late=Date.now()-timerEnd>15000;
-    stopTimer();
+    stopTimer(true);
     if(late)return;
-    navigator.vibrate?.([300,120,300,120,300]);chime();
+    buzz([300,120,300,120,300]);chime();
     toast(L('⏱ Τέλος ξεκούρασης — επόμενο set!','⏱ Rest is over — next set!'));
   }
 }
+/** in the app: a notification that rings even with the screen locked */
+function nativeRest(){
+  if(!NATIVE||!timerEnd)return;
+  nativeSend({type:'restStart',seconds:Math.max(1,Math.round((timerEnd-Date.now())/1000)),sound:!!settings.restSound,
+    title:L('⏱ Τέλος ξεκούρασης','⏱ Rest is over'),body:L('Επόμενο set! 💪','Next set! 💪')});
+}
 function chime(){
+  if(NATIVE){if(settings.restSound)nativeSend({type:'chime'});return}   // the app plays it and lowers the music
   if(!settings.restSound||!audioCtx)return;
   try{if(navigator.audioSession)navigator.audioSession.type='transient'}catch{}   // Safari: duck the music while we play
   audioCtx.resume?.();
@@ -245,7 +253,7 @@ function chime(){
 }
 document.querySelectorAll('.timerChip').forEach(b=>b.onclick=()=>{const s=Number(b.dataset.sec);settings.restDefault=s;persist();startTimer(s)});
 $('#timerStop').onclick=stopTimer;
-$('#timerPlus').onclick=()=>{timerEnd+=30000;timerTotal+=30;tickTimer()};
+$('#timerPlus').onclick=()=>{timerEnd+=30000;timerTotal+=30;tickTimer();nativeRest()};
 
 /* log screen: one tap on a rested group picks it */
 function renderReadyHint(){

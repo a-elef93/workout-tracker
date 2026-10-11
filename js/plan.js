@@ -171,7 +171,7 @@ function renderHome(){
 }
 $('#todayCard').addEventListener('click',e=>{
   if(e.target.closest('[data-open-training]')||e.target.closest('#planEditBtn'))return openTraining();
-  if(e.target.closest('[data-goto-stats]')){switchTab('stats');return}
+  if(e.target.closest('[data-goto-stats]')){showStats('overview','.coachCard');return}
   const s=e.target.closest('[data-start]');
   if(s){startGroup(s.dataset.start);return}
   const m=e.target.closest('[data-mon]');
@@ -233,6 +233,7 @@ $('#trainingFile').onchange=async e=>{const f=e.target.files[0];e.target.value='
 $('#trainingShare').onclick=async()=>{
   if(!training)return;
   const txt=training.days.map((d,i)=>[`${cap(dayName(i))}: ${d.groups.length?d.groups.map(gName).join(', '):L('Ξεκούραση','Rest')}`,...d.exercises.map(e=>`- ${exText(e)}`)].join('\n')).join('\n');
+  if(NATIVE)return nativeSend({type:'shareText',text:txt});
   try{if(navigator.share)await navigator.share({title:L('Πρόγραμμα προπόνησης','Workout plan'),text:txt});else{await navigator.clipboard.writeText(txt);toast(L('📋 Αντιγράφηκε','📋 Copied'))}}catch{}
 };
 $('#trainingClear').onclick=()=>{

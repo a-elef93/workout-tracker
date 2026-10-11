@@ -44,7 +44,7 @@ function addWater(ml){
   const before=waterToday(),t=today();
   (water[t]||(water[t]=[])).push({t:Date.now(),ml});
   persist();renderWater();renderNutritionWeek();
-  if(before<settings.goalWater&&waterToday()>=settings.goalWater){confetti();navigator.vibrate?.([40,60,120]);toast(L('💧 Έπιασες τον στόχο νερού για σήμερα!','💧 You hit today’s water goal!'))}
+  if(before<settings.goalWater&&waterToday()>=settings.goalWater){confetti();buzz([40,60,120]);toast(L('💧 Έπιασες τον στόχο νερού για σήμερα!','💧 You hit today’s water goal!'))}
   else toast(`💧 +${ml} ml`);
 }
 document.querySelectorAll('.waterAdd').forEach(b=>b.onclick=()=>addWater(b.dataset.ml));
@@ -118,7 +118,7 @@ $('#weightForm').onsubmit=e=>{
   weights[d]=kg;persist();
   $('#weightKg').value='';$('#weightKg').blur();$('#weightDate').value=today();
   renderWeight();renderNutritionWeek();
-  if(!wasReached&&goalProgress(latestWeight().kg)?.reached){confetti();navigator.vibrate?.([40,60,120]);toast(L('🎯 Έπιασες τον στόχο βάρους!','🎯 You reached your weight goal!'))}
+  if(!wasReached&&goalProgress(latestWeight().kg)?.reached){confetti();buzz([40,60,120]);toast(L('🎯 Έπιασες τον στόχο βάρους!','🎯 You reached your weight goal!'))}
   else toast(`⚖️ ${fmtKg(kg)} kg · ${formatDate(d)}`);
 };
 $('#weightLog').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;delete weights[b.dataset.d];persist();renderWeight();renderNutritionWeek()};
@@ -272,11 +272,12 @@ function renderPlanFile(){
   const url=fileURL(),img=planFile.type.startsWith('image/');
   box.innerHTML=`<div class="fileCard">${img?`<img src="${url}" alt="${L('Πρόγραμμα διατροφής','Nutrition plan')}" class="planImg">`:`<iframe src="${url}" title="${L('Πρόγραμμα διατροφής','Nutrition plan')}" class="planPdf"></iframe>`}
     <div class="fileMeta"><b>${escapeHtml(planFile.name)}</b><span>${Math.max(1,Math.round(planFile.size/1024))} KB · ${formatDate(dayKey(new Date(planFile.added)))}</span></div>
-    <div class="fileBtns"><a class="btnLink" href="${url}" target="_blank" rel="noopener">${L('Άνοιγμα','Open')}</a><button type="button" class="secondary" data-file="add">${L('Αλλαγή','Change')}</button><button type="button" class="secondary" data-file="del">${L('Αφαίρεση','Remove')}</button></div></div>`;
+    <div class="fileBtns">${NATIVE?`<button type="button" data-file="open">${L('Άνοιγμα','Open')}</button>`:`<a class="btnLink" href="${url}" target="_blank" rel="noopener">${L('Άνοιγμα','Open')}</a>`}<button type="button" class="secondary" data-file="add">${L('Αλλαγή','Change')}</button><button type="button" class="secondary" data-file="del">${L('Αφαίρεση','Remove')}</button></div></div>`;
 }
 $('#planFileBox').onclick=async e=>{
   const b=e.target.closest('[data-file]');if(!b)return;
   if(b.dataset.file==='add')return $('#planFile').click();
+  if(b.dataset.file==='open')return nativeSend({type:'shareFile',name:planFile.name,mime:planFile.type,base64:bufToB64(planFile.data)});
   if(!confirm(L('Να αφαιρεθεί το αρχείο του προγράμματος;','Remove the plan file?')))return;
   await fileDB.del('plan').catch(()=>{});planFile=null;resetFileURL();renderPlanFile();
 };

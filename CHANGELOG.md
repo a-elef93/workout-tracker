@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.1 — 2026-10-11
+
+- **Stats in five groups**: Overview · Progress · Streaks · Body · Reports, in a bar that stays on top while you scroll. Only the open group is drawn, so there's far less scrolling. The last group you opened is remembered.
+- Pilot Coach shows its top 3 tips, with the rest one tap away.
+- Ready for the **GymPilot phone app**: inside the app, the rest timer rings with the screen locked, the chime lowers your music, and backups, images and the clipboard go through the phone (`js/native.js`). In the browser nothing changes.
+
 ## v1.4.0 — 2026-10-08
 
 A plan for the week, a coach that spots plateaus, English, dark mode, and charts you can read at a glance.

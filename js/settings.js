@@ -1,5 +1,29 @@
 /* ───── Tabs, settings, backup & restore, start-up ───── */
-function renderStats(){renderCoach();renderRecovery();renderRings();renderConsistency();renderChart();renderSteps();renderReport();renderWrapped();renderBadges();renderYear();renderTiles();renderDonut();renderRecords()}
+/* Stats come in five groups so you don't scroll forever; only the open group is drawn */
+const STATS_GROUPS={
+  overview:()=>{renderCoach();renderRings();renderTiles();renderBadges()},
+  progress:()=>{renderChart();renderRecords();renderDonut()},
+  consistency:()=>{renderConsistency();renderYear()},
+  body:()=>{renderRecovery();renderSteps()},
+  reports:()=>{renderReport();renderWrapped()},
+};
+let statsSeg=STATS_GROUPS[settings.statsSeg]?settings.statsSeg:'overview';
+function renderStats(){
+  document.querySelectorAll('.statsGroup').forEach(g=>g.hidden=g.dataset.group!==statsSeg);
+  document.querySelectorAll('#statsSeg button').forEach(b=>{const on=b.dataset.seg===statsSeg;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+  STATS_GROUPS[statsSeg]();
+}
+/** open Stats on a group (and optionally scroll to a card in it) */
+function showStats(seg,card){
+  if(seg&&STATS_GROUPS[seg]){statsSeg=seg;settings.statsSeg=seg;persist()}
+  switchTab('stats');
+  if(card)setTimeout(()=>document.querySelector(card)?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+}
+$('#statsSeg').onclick=e=>{
+  const b=e.target.closest('[data-seg]');if(!b||b.dataset.seg===statsSeg)return;
+  statsSeg=b.dataset.seg;settings.statsSeg=statsSeg;persist();renderStats();
+  window.scrollTo({top:0});
+};
 function switchTab(t){
   ['log','history','stats','nutrition'].forEach(v=>$('#view-'+v).hidden=v!==t);
   document.querySelectorAll('.tab').forEach(b=>{
@@ -26,8 +50,8 @@ async function openSettings(){
   const kb=Math.max(1,Math.round((['wt_logs','wt_exercises','wt_settings','wt_steps','wt_water','wt_weight','wt_plan','wt_food','wt_training'].reduce((a,k)=>a+(localStorage.getItem(k)||'').length,0))/1024));
   let persisted=false;try{persisted=await navigator.storage.persisted()}catch{}
   $('#storageInfo').innerHTML=L(
-    `📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ${Object.keys(weights).length} ζυγίσματα · ${Object.keys(food).length} μέρες διατροφής · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`,
-    `📦 ${logs.length} entries · ${Object.keys(steps).length} step days · ${Object.keys(water).length} water days · ${Object.keys(weights).length} weigh-ins · ${Object.keys(food).length} food days · ~${kb} KB<br>📅 Last backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'never'}<br>${persisted?'🔒 The browser won’t clear your data on its own.':'ℹ️ On iPhone, add it to the Home Screen for steadier storage, and back up now and then.'}`);
+    `📦 ${logs.length} καταγραφές · ${Object.keys(steps).length} μέρες βημάτων · ${Object.keys(water).length} μέρες νερού · ${Object.keys(weights).length} ζυγίσματα · ${Object.keys(food).length} μέρες διατροφής · ~${kb} KB<br>📅 Τελευταίο backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'ποτέ'}<br>${NATIVE?'🔒 Τα δεδομένα μένουν μέσα στην εφαρμογή, σε αυτό το κινητό.':persisted?'🔒 Ο browser δεν θα σβήσει αυτόματα τα δεδομένα.':'ℹ️ Στο iPhone πρόσθεσέ το στην Οθόνη Αφετηρίας για πιο σταθερή αποθήκευση και κάνε backup πού και πού.'}`,
+    `📦 ${logs.length} entries · ${Object.keys(steps).length} step days · ${Object.keys(water).length} water days · ${Object.keys(weights).length} weigh-ins · ${Object.keys(food).length} food days · ~${kb} KB<br>📅 Last backup: ${settings.lastExport?formatDate(dayKey(new Date(settings.lastExport))):'never'}<br>${NATIVE?'🔒 Your data stays inside the app, on this phone.':persisted?'🔒 The browser won’t clear your data on its own.':'ℹ️ On iPhone, add it to the Home Screen for steadier storage, and back up now and then.'}`);
 }
 $('#settingsBtn').onclick=openSettings;
 $('#settingsClose').onclick=()=>{saveSettings();settingsDlg.close()};
@@ -75,6 +99,12 @@ function checkBackup(){
 async function exportData(){
   const pf=planFile&&planFile.size<=8*1024*1024?{name:planFile.name,type:planFile.type,size:planFile.size,added:planFile.added,b64:bufToB64(planFile.data)}:null;   // in memory already: no await before share
   const json=JSON.stringify({version:7,exportedAt:new Date().toISOString(),exercises,logs,steps,water,weights,plan,food,training,planFile:pf,badges,settings},null,2);
+  if(NATIVE){
+    // the app writes the file and opens the share sheet (Files, iCloud Drive, Drive…)
+    const ok=await nativeAsk('shareFile',{name:'GymPilot-backup.json',mime:'application/json',text:json});
+    if(ok){settings.lastExport=Date.now();persist();checkBackup();toast(L('✅ Το backup είναι έτοιμο','✅ Backup ready'))}
+    return;
+  }
   const file=new File([json],'GymPilot-backup.json',{type:'application/json'});
   try{
     if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'GymPilot backup'});
@@ -139,24 +169,27 @@ $('#clearBtn').onclick=()=>{
 
 /* ───── start-up ───── */
 const midEntry=()=>!!editingId||[...sets.querySelectorAll('input')].some(i=>i.value)||$('#notes').value.trim()||!!document.querySelector('dialog[open]')||!!$('#weightKg').value||!!$('#waterMl').value;
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)return;
+function onResume(){
   swReg?.update().catch(()=>{});
   checkBackup();setTimeout(maybeAskBackup,800);setTimeout(maybeShowWrapped,1600);
   if(!$('#view-log').hidden){renderReadyHint();renderHome()}
-  // back from the Shortcuts app: reading the clipboard needs a tap, so ask for one
-  if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast(L('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα','Tap ↻ Sync again to bring the steps in'))}
+  // back from the Shortcuts app: the phone app reads the clipboard by itself; a browser needs a tap, so ask for one
+  if(awaitingShortcut&&NATIVE){awaitingShortcut=false;syncSteps()}
+  else if(awaitingShortcut){awaitingShortcut=false;$('#stepsSyncBtn').classList.add('pulse');toast(L('Πάτα ξανά ↻ Συγχρονισμός για να περαστούν τα βήματα','Tap ↻ Sync again to bring the steps in'))}
   tickTimer();
   if(!$('#view-nutrition').hidden)renderNutrition();   // new day = empty bottle, new week = new rings
   if(!editingId&&!$('#view-log').hidden&&sets.querySelectorAll('input:not(:placeholder-shown)').length===0){
     if(date.value<today())date.value=today();
     timeIn.value=nowTime();
   }
-});
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)onResume()});
+// the app calls this when it comes back to the foreground (a WebView may not fire visibilitychange)
+window.__gpResume=onResume;
 try{navigator.storage?.persist?.()?.catch(()=>{})}catch{}
 /* updates: check for a new version on every open; when it takes over, reload — unless you're mid-entry */
 let swReg=null;
-if('serviceWorker'in navigator){
+if('serviceWorker'in navigator&&!NATIVE){
   const hadController=!!navigator.serviceWorker.controller;   // first install shouldn't reload
   navigator.serviceWorker.register('./sw.js').then(r=>{swReg=r}).catch(()=>{});
   let reloaded=false;
@@ -187,6 +220,7 @@ persist();checkBackup();renderHome();
 // home-screen shortcuts open a tab: ?tab=stats
 const startTab=new URLSearchParams(location.search).get('tab');
 if(['history','stats','nutrition'].includes(startTab))switchTab(startTab);
+else if(STATS_GROUPS[startTab])showStats(startTab);
 checkBadges(true);renderReadyHint();   // badges you already earned are filed quietly on first run
 setTimeout(maybeShowWrapped,2200);
 setTimeout(maybeAskBackup,1200);

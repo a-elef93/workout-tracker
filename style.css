@@ -688,6 +688,15 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .progressCard .seg button.on{background:#4a4038;color:#fff}
 .themeSeg{margin-top:10px}
 
+/* Stats groups */
+.statsSeg{position:sticky;top:calc(env(safe-area-inset-top) + 8px);z-index:15;display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:4px;margin-bottom:14px;
+  border-radius:16px;background:var(--tab-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow)}
+.statsSeg button{display:grid;justify-items:center;gap:1px;background:transparent;color:var(--muted);padding:6px 1px 7px;border-radius:12px;font-size:11.5px;font-weight:800;box-shadow:none;white-space:nowrap;overflow:hidden;min-width:0}
+.statsSeg .si{font-size:17px;line-height:1.2;filter:grayscale(.6);opacity:.8}
+.statsSeg button.on .si{filter:none;opacity:1}
+.statsSeg button.on{background:var(--brand-soft);color:var(--brand-2)}
+.coachList .wide{margin-top:2px}
+
 /* Pilot Coach */
 .coachSub{margin:-4px 0 10px;font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.45}
 .coachList{display:grid;gap:8px}

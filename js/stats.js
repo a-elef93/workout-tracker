@@ -1,13 +1,16 @@
 /* ───── Stats: coach, recovery, week rings, consistency months, progress chart, donut, records, year ───── */
 const DAY_LETTERS=()=>[0,1,2,3,4,5,6].map(i=>dayName(i,'narrow'));
 
+let coachAll=false;
 function renderCoach(){
-  const items=coachInsights();
-  $('#coachList').innerHTML=items.map(insightHtml).join('');
+  const items=coachInsights(),shown=coachAll?items:items.slice(0,3);
+  $('#coachList').innerHTML=shown.map(insightHtml).join('')+(items.length>3?`<button type="button" class="secondary small wide" id="coachMore">${coachAll?L('Λιγότερα','Show less'):L(`Όλες οι συμβουλές (${items.length})`,`All tips (${items.length})`)}</button>`:'');
   const a=planAdherence();
   $('#coachPlan').hidden=!a;
   if(a)$('#coachPlan').innerHTML=`🗓️ ${L('Τήρηση προγράμματος','Plan followed')}: <b>${a.hit}/${a.planned}</b> ${L('μέρες (4 εβδομάδες)','days (4 weeks)')}`;
 }
+
+$('#coachList').addEventListener('click',e=>{if(e.target.closest('#coachMore')){coachAll=!coachAll;renderCoach()}});
 
 /* ───── muscle recovery map ───── */
 const REC_COLORS={ready:'#2fbf71',almost:'#e0a336',rest:'#e07a5f',never:'var(--rec-never)'};

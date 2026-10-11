@@ -41,6 +41,8 @@ A local-first tracker for workouts, steps and nutrition that runs in the browser
 - Each exercise is badged as record / up / down / same against the previous session, with a filter by muscle group.
 
 ### 📊 Stats
+Five groups in a bar at the top: **Overview** (coach, week, tiles, achievements), **Progress** (Progress Every Time, records, sets per group), **Streaks** (Stay consistent, your year), **Body** (recovery map, steps) and **Reports** (weekly report, Wrapped).
+
 - **Pilot Coach (plateau detector)**: reads your logs on the phone and flags exercises stuck for 3+ sessions (by estimated 1RM), drops of 5%+, muscle groups you haven't trained in two weeks, push/pull imbalance and volume swings, each with a concrete fix (add weight, change rep range, deload to ~90%, or swap the exercise).
 - **Progress Every Time**: every set of an exercise as a dot, weight in amber and reps in green, for the last 2 sessions or all of them; *Stats* switches to the top set / estimated 1RM / volume chart.
 - **Stay consistent**: the last months as day grids with your training days in green.
@@ -100,6 +102,7 @@ Then tap **↻ Συγχρονισμός** (Sync) on the Steps card in Stats. Aft
 index.html        markup for all four tabs and the dialogs (Greek text, English in data-en attributes)
 style.css         light and dark themes (green + coffee) and components
 js/i18n.js        language and theme, loaded first
+js/native.js      bridge to the GymPilot phone app (only active inside it)
 js/core.js        data, helpers, metrics, calories, Pilot Coach
 js/plan.js        workout plan, import, the Today card, month calendars
 js/log.js         log form, steppers, live feedback, rest timer
