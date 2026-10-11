@@ -20,3 +20,10 @@ function buzz(pattern){
   try{navigator.vibrate?.(pattern)}catch{}
 }
 if(NATIVE)document.documentElement.classList.add('native');
+/** Android back button in the app: close a dialog, then go back to the Log tab, then leave */
+window.__gpBack=()=>{
+  const d=document.querySelector('dialog[open]');
+  if(d)return d.close();
+  if(document.querySelector('#view-log').hidden)return switchTab('log');
+  nativeSend({type:'exitApp'});
+};

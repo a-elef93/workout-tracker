@@ -72,6 +72,8 @@ header::after{
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 72 C30 50 50 48 75 62 S120 30 150 38 S200 70 230 52 S280 18 310 34 S370 60 400 44 L400 100 L0 100Z' fill='white'/%3E%3C/svg%3E") bottom/100% 100% no-repeat;
 }
 header>*{position:relative;z-index:1}
+/* the status bar keeps the espresso color while the page scrolls under it */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#24180f;z-index:40;pointer-events:none}
 /* one compact header on every tab: the bar is as tall as the logo row */
 header>.headerLogo{position:absolute;z-index:0;right:-18px;bottom:-42px;width:130px;height:130px;opacity:.06}
 .headerText{display:flex;align-items:center;gap:12px;min-width:0}
@@ -325,6 +327,8 @@ th{font-size:12px;color:var(--muted);font-weight:600;padding-bottom:2px}
 .tile:nth-child(2){--t1:#34c07a;--t2:#15844a}
 .tile:nth-child(3){--t1:#c49464;--t2:#8b5a36}
 .tile:nth-child(4){--t1:#1f9d5c;--t2:#0e6537}
+.tile:nth-child(5){--t1:#d9734e;--t2:#9c4a2c}
+.tile:nth-child(6){--t1:#3f7fb6;--t2:#25557f}
 
 .chartBox svg{width:100%;height:auto;display:block;overflow:visible}
 .chartBox .grid{stroke:var(--line);stroke-width:1}
@@ -756,7 +760,7 @@ button.ach{padding:10px 6px}
 .badgeDetail .wBar{width:100%}
 .bdHow{margin:0;text-align:left;font-size:14px;line-height:1.5}
 
-label.check{flex-direction:row;align-items:center;gap:10px;font-size:14px;color:var(--text);font-weight:600;margin:10px 0 0}
+label.check,.setGroup label.check{justify-content:flex-start;flex-direction:row;align-items:center;gap:10px;font-size:14px;color:var(--text);font-weight:600;margin:10px 0 0}
 label.check input{width:22px;height:22px;flex:none;accent-color:var(--brand);margin:0}
 dialog.tall{width:min(94vw,520px)}
 
@@ -850,3 +854,6 @@ dialog{max-height:90vh;overflow:auto}
   .mbProgress i{transition:none}
   .stepsBar i{transition:none}
 }
+
+/* inside the phone app */
+.native .webOnly{display:none}
