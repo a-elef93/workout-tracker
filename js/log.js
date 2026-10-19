@@ -51,7 +51,7 @@ function showLast(){
   const l=lastOf(exercise.value),pl=plannedToday(exercise.value);
   const planTxt=pl?`<div class="planNote">🗓️ ${L('Πρόγραμμα','Plan')}: <b>${pl.sets?`${pl.sets}×${escapeHtml(pl.reps||'')}`:L('σήμερα','today')}</b></div>`:'';
   $('#lastText').innerHTML=(l
-    ?`<b>${L('Τελευταία φορά','Last time')}</b> · ${formatDate(l.date)}${timeOf(l)?` · ${timeOf(l)}`:''}<div class="lastSets">${l.sets.map((s,i)=>`<span class="pill"><small>S${i+1}</small>${setText(s)}</span>`).join('')}</div>`
+    ?`<b>${L('Τελευταία φορά','Last time')}</b> · ${formatDate(l.date)}${timeOf(l)?` · ${timeOf(l)}`:''}<div class="lastSets">${l.sets.map((s,i)=>`<span class="pill"><small>S${i+1}</small>${setText(s)}</span>`).join('')}</div>${l.notes?`<div class="lastNotes">📝 ${escapeHtml(l.notes)}</div>`:''}`
     :L('Δεν υπάρχει προηγούμενη καταγραφή.','No previous entry yet.'))+planTxt;
   $('#hint').hidden=!l;if(l)$('#hint').textContent='💡 '+hintFor(l);
   $('#copyLastBtn').hidden=!l;
